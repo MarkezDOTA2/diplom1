@@ -50,7 +50,7 @@ const dbConfig = {
   connectionLimit: 10,
   queueLimit: 0
 };
-
+const pool = mysql.createPool(dbConfig);
 pool.getConnection()
   .then(async conn => {
     console.log('✅ Подключение к MySQL успешно');
