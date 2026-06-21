@@ -1,0 +1,125 @@
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col footer-brand">
+        <div class="footer-logo">Store<span class="logo-accent">Chicco</span></div>
+        <p>Ваш надёжный магазин электроники. Лучшие бренды по выгодным ценам с гарантией качества.</p>
+        <div class="footer-socials">
+          <a href="#" aria-label="ВКонтакте"><i class="fab fa-vk"></i></a>
+          <a href="#" aria-label="Telegram"><i class="fab fa-telegram"></i></a>
+          <a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+          <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Каталог</h4>
+        <ul>
+          <li><a href="/category/smartphones"><i class="fas fa-mobile-alt"></i> Смартфоны</a></li>
+          <li><a href="/category/laptops"><i class="fas fa-laptop"></i> Ноутбуки</a></li>
+          <li><a href="/category/tvs"><i class="fas fa-tv"></i> Телевизоры</a></li>
+          <li><a href="/category/refrigerators"><i class="fas fa-snowflake"></i> Холодильники</a></li>
+          <li><a href="/category/computers"><i class="fas fa-desktop"></i> Компьютеры</a></li>
+          <li><a href="/category/headphones"><i class="fas fa-headphones"></i> Наушники</a></li>
+          <li><a href="/category/accessories"><i class="fas fa-plug"></i> Аксессуары</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Покупателям</h4>
+        <ul>
+          <li><a href="/cart"><i class="fas fa-shopping-cart"></i> Корзина</a></li>
+          <li><a href="/favorites"><i class="far fa-heart"></i> Избранное</a></li>
+          <li><a href="/profile"><i class="far fa-user"></i> Мои заказы</a></li>
+          <li><a href="#"><i class="fas fa-truck"></i> Доставка и оплата</a></li>
+          <li><a href="#"><i class="fas fa-undo"></i> Возврат и обмен</a></li>
+          <li><a href="#"><i class="fas fa-question-circle"></i> FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>О компании</h4>
+        <ul>
+          <li><a href="/info">О нас</a></li>
+          <li><a href="#">Контакты</a></li>
+          <li><a href="#">Вакансии</a></li>
+          <li><a href="#">Блог</a></li>
+          <li><a href="#">Гарантия</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Контакты</h4>
+        <ul class="footer-contacts">
+          <li><i class="fas fa-map-marker-alt"></i> Ангарск, ул. Примерная, 123</li>
+          <li><i class="fas fa-phone"></i> <a href="tel:+79501234242">+7 (950) 123-42-42</a></li>
+          <li><i class="fas fa-envelope"></i> <a href="mailto:info@storechicco.ru">info@storechicco.ru</a></li>
+          <li><i class="fas fa-clock"></i> Ежедневно 10:00–21:00</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <div class="container">
+      <div class="footer-bottom-inner">
+        <p>&copy; <%= new Date().getFullYear() %> StoreChicco. Все права защищены.</p>
+        <div class="footer-payments">
+          <span class="pay-badge pay-mir">МИР</span>
+          <span class="pay-badge pay-sbp">СБП</span>
+          <span class="pay-badge pay-sber">СБЕР</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container"></div>
+
+<script>
+function showToast(msg, type, duration) {
+  type = type || 'info';
+  duration = duration || 4000;
+  var icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+  var container = document.getElementById('toast-container');
+  var existing = container.querySelectorAll('.toast');
+  if (existing.length >= 3) existing[0].remove();
+  var toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i><span>' + msg + '</span>';
+  container.appendChild(toast);
+  requestAnimationFrame(function() { requestAnimationFrame(function() { toast.classList.add('show'); }); });
+  setTimeout(function() {
+    toast.classList.remove('show');
+    setTimeout(function() { toast.remove(); }, 400);
+  }, duration);
+}
+</script>
+
+<script>
+// Анимация кнопки избранного при любом клике
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.product-card-fav');
+  if (!btn) return;
+  btn.classList.remove('fav-pop');
+  void btn.offsetWidth; // сброс анимации для повторного срабатывания
+  btn.classList.add('fav-pop');
+  setTimeout(function() { btn.classList.remove('fav-pop'); }, 550);
+});
+</script>
+
+<script>
+// Тост после успешной регистрации
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('welcome') === '1') {
+    history.replaceState(null, '', window.location.pathname);
+    setTimeout(function() {
+      showToast('Добро пожаловать! Вы успешно зарегистрированы.', 'success', 5000);
+    }, 400);
+  }
+})();
+</script>
+
+</body>
+</html>

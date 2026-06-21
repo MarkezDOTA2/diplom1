@@ -1,0 +1,26 @@
+<div class="product-card">
+  <div class="product-card-img">
+    <a href="/product/<%= product.id %>">
+      <img src="<%= product.image_url || '/images/placeholder.jpg' %>"
+           alt="<%= product.name %>"
+           onerror="this.onerror=null;this.src='/images/placeholder.jpg'">
+    </a>
+    <button class="product-card-fav" data-id="<%= product.id %>"
+            onclick="toggleFav(<%= product.id %>, this)" title="В избранное">
+      <i class="fas fa-heart"></i>
+    </button>
+  </div>
+  <div class="product-card-body">
+    <% if (product.brand) { %>
+    <div class="product-card-brand"><%= product.brand %></div>
+    <% } %>
+    <a href="/product/<%= product.id %>" class="product-card-name"><%= product.name %></a>
+    <div class="product-card-price">
+      <%= Number(product.price).toLocaleString('ru-RU') %> ₽
+      <% if (product.old_price) { %><span class="product-card-old-price"><%= Number(product.old_price).toLocaleString('ru-RU') %> ₽</span><% } %>
+    </div>
+    <button class="btn-cart" onclick="addToCart(<%= product.id %>, this)">
+      <i class="fas fa-shopping-cart"></i> В корзину
+    </button>
+  </div>
+</div>

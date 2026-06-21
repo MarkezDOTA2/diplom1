@@ -1,0 +1,422 @@
+<%- include('layout-start', { title: 'Акции / Слайды', page, topbarExtra: '<button class="panel-btn panel-btn-primary" onclick="openAddSlide()"><i class="fas fa-plus"></i> Добавить слайд</button>' }) %>
+
+<div class="panel-card" style="margin-bottom:20px;padding:18px 22px;background:#eff6ff;border-color:#bfdbfe;">
+  <i class="fas fa-info-circle" style="color:#2563eb;margin-right:8px;"></i>
+  <span style="font-size:13px;color:#1e40af;">Слайды отображаются на главной странице в карусели. Снимите галочку «Активен», чтобы скрыть слайд. Если все слайды скрыты — карусель не показывается.</span>
+</div>
+
+<div id="slides-container">
+<% if (!slides.length) { %>
+<div class="panel-card" style="text-align:center;padding:40px;color:#7b8099;">
+  <i class="fas fa-images" style="font-size:40px;color:#e5e7ef;display:block;margin-bottom:12px;"></i>
+  Слайдов пока нет. Добавьте первый!
+</div>
+<% } else { %>
+<% slides.forEach(function(s) { %>
+<div class="panel-card" id="slide-<%= s.id %>" style="margin-bottom:14px;">
+  <div class="panel-slide-preview" style="background:<%= s.gradient %>;">
+    <div>
+      <div class="panel-slide-preview-badge"><%= s.badge || '' %></div>
+      <div class="panel-slide-preview-title"><%= s.title %></div>
+      <% if (s.subtitle) { %><div style="color:rgba(255,255,255,.7);font-size:12px;margin-top:2px;"><%= s.subtitle %></div><% } %>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;justify-content:center;min-width:80px;">
+      <% if (s.image_url) { %>
+        <img src="<%= s.image_url %>" alt="" style="max-height:80px;max-width:140px;object-fit:contain;border-radius:10px;" onerror="this.style.display='none'">
+      <% } else { %>
+        <span style="font-size:40px;"><%= s.visual || '🛍️' %></span>
+      <% } %>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid #f0f2f8;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+        <input type="checkbox" <%= s.is_active ? 'checked' : '' %> onchange="toggleSlide(<%= s.id %>, this.checked)"
+          style="accent-color:#2bb5a0;">
+        Активен
+      </label>
+      <div style="display:flex;gap:4px;">
+        <button class="panel-btn panel-btn-secondary panel-btn-sm" onclick="moveSlide(<%= s.id %>, 'up')" title="Вверх" style="padding:4px 8px;"><i class="fas fa-chevron-up"></i></button>
+        <button class="panel-btn panel-btn-secondary panel-btn-sm" onclick="moveSlide(<%= s.id %>, 'down')" title="Вниз" style="padding:4px 8px;"><i class="fas fa-chevron-down"></i></button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="panel-btn panel-btn-secondary panel-btn-sm" data-slide="<%- JSON.stringify(s).replace(/"/g,'&quot;') %>" onclick="editSlide(JSON.parse(this.dataset.slide))"><i class="fas fa-pen"></i> Изменить</button>
+      <button class="panel-btn panel-btn-danger panel-btn-sm" onclick="deleteSlide(<%= s.id %>)"><i class="fas fa-trash"></i></button>
+    </div>
+  </div>
+</div>
+<% }) %>
+<% } %>
+</div>
+
+<!-- Модальное окно -->
+<div id="modal-slide" class="panel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:600px;width:95%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 id="modal-slide-title" style="font-size:17px;font-weight:700;">Добавить слайд</h3>
+      <button onclick="closeModal('modal-slide')" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7b8099;">×</button>
+    </div>
+    <!-- Превью -->
+    <div id="slide-preview-box" class="panel-slide-preview" style="margin-bottom:20px;background:linear-gradient(135deg,#0a9e94 0%,#2dbdb6 55%,#48D1CC 100%);">
+      <div>
+        <div id="prev-badge" class="panel-slide-preview-badge"></div>
+        <div id="prev-title" class="panel-slide-preview-title">Заголовок слайда</div>
+        <div id="prev-sub" style="color:rgba(255,255,255,.7);font-size:12px;margin-top:2px;"></div>
+      </div>
+      <div id="prev-visual" style="margin-left:auto;display:flex;align-items:center;justify-content:center;min-width:80px;">
+        <img id="prev-img" src="" alt="" style="max-height:110px;max-width:200px;object-fit:contain;border-radius:12px;display:none;">
+        <span id="prev-emoji" style="font-size:40px;">🛍️</span>
+      </div>
+    </div>
+    <form id="slide-form" onsubmit="saveSlide(event)">
+      <input type="hidden" id="sf-id">
+      <div class="panel-form-grid" style="margin-bottom:14px;">
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Заголовок *</label>
+          <input id="sf-title" placeholder="Лучшая электроника" required oninput="document.getElementById('prev-title').textContent=this.value||'Заголовок'">
+        </div>
+        <div class="panel-form-group">
+          <label>Подзаголовок</label>
+          <input id="sf-sub" placeholder="по выгодным ценам" oninput="document.getElementById('prev-sub').textContent=this.value">
+        </div>
+        <div class="panel-form-group">
+          <label>Бейдж</label>
+          <input id="sf-badge" placeholder="🔥 Скидки до 30%" oninput="document.getElementById('prev-badge').textContent=this.value">
+        </div>
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Описание</label>
+          <input id="sf-desc" placeholder="Краткое описание...">
+        </div>
+        <div class="panel-form-group">
+          <label>Эмодзи / Визуал <span style="color:#aaa;font-weight:400;font-size:12px;">(если нет фото)</span></label>
+          <input id="sf-visual" placeholder="🛍️" maxlength="4" oninput="updateSlideVisualPreview()">
+        </div>
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Фото слайда <span style="color:#aaa;font-weight:400;font-size:12px;">(заменяет эмодзи)</span></label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button type="button" id="slide-img-tab-url"  onclick="switchSlideImgTab('url')"
+              style="padding:5px 14px;border-radius:6px;border:1.5px solid #2bb5a0;background:#2bb5a0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Ссылка</button>
+            <button type="button" id="slide-img-tab-file" onclick="switchSlideImgTab('file')"
+              style="padding:5px 14px;border-radius:6px;border:1.5px solid #e5e7ef;background:#f0f2f8;color:#4a4f6a;font-size:12px;font-weight:600;cursor:pointer;">Загрузить файл</button>
+          </div>
+          <div id="slide-img-url-block">
+            <input id="sf-image-url" placeholder="https://... или /images/..." oninput="updateSlideImgFromUrl(this.value)"
+              style="border:1.5px solid #e5e7ef;border-radius:7px;padding:7px 12px;font-size:13px;width:100%;">
+          </div>
+          <div id="slide-img-file-block" style="display:none;">
+            <input type="file" id="sf-image-file" accept="image/*" onchange="previewSlideFile(this)"
+              style="border:1.5px solid #e5e7ef;border-radius:7px;padding:7px 10px;font-size:13px;width:100%;background:#fff;">
+          </div>
+          <div id="slide-img-preview-wrap" style="display:none;margin-top:8px;display:flex;align-items:center;gap:10px;">
+            <img id="slide-img-preview" src="" alt="Превью"
+              style="max-height:80px;max-width:160px;border-radius:8px;border:1.5px solid #e5e7ef;object-fit:contain;background:#f8f9fd;padding:4px;">
+            <button type="button" onclick="clearSlideImg()"
+              style="font-size:12px;color:#ef4444;background:none;border:1.5px solid #ef4444;border-radius:6px;padding:4px 10px;cursor:pointer;">
+              <i class="fas fa-times"></i> Удалить фото
+            </button>
+          </div>
+        </div>
+        <div class="panel-form-group" style="display:none;">
+          <input id="sf-order" type="number" value="0">
+        </div>
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Градиент фона</label>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:#7b8099;">Цвет 1</span>
+              <input type="color" id="sf-color1" value="#0a9e94" oninput="buildGradient()" style="width:40px;height:36px;border:1.5px solid #e5e7ef;border-radius:7px;padding:2px;cursor:pointer;">
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:#7b8099;">Цвет 2</span>
+              <input type="color" id="sf-color2" value="#48D1CC" oninput="buildGradient()" style="width:40px;height:36px;border:1.5px solid #e5e7ef;border-radius:7px;padding:2px;cursor:pointer;">
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:#7b8099;">Угол</span>
+              <select id="sf-angle" onchange="buildGradient()" style="border:1.5px solid #e5e7ef;border-radius:7px;padding:6px 10px;font-size:13px;">
+                <option value="90">→ 90°</option>
+                <option value="135" selected>↘ 135°</option>
+                <option value="180">↓ 180°</option>
+                <option value="45">↗ 45°</option>
+                <option value="0">↑ 0°</option>
+              </select>
+            </div>
+            <div id="sf-gradient-preview" style="flex:1;min-width:80px;height:36px;border-radius:7px;border:1.5px solid #e5e7ef;"></div>
+          </div>
+          <input type="hidden" id="sf-gradient">
+        </div>
+        <div class="panel-form-group">
+          <label>Текст кнопки 1</label>
+          <input id="sf-btn1t" placeholder="Смотреть каталог">
+        </div>
+        <div class="panel-form-group">
+          <label>Ссылка кнопки 1</label>
+          <input id="sf-btn1l" placeholder="/category/smartphones">
+        </div>
+        <div class="panel-form-group">
+          <label>Текст кнопки 2</label>
+          <input id="sf-btn2t" placeholder="Подробнее →">
+        </div>
+        <div class="panel-form-group">
+          <label>Ссылка кнопки 2</label>
+          <input id="sf-btn2l" placeholder="/category/smartphones">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="panel-btn panel-btn-secondary" onclick="closeModal('modal-slide')">Отмена</button>
+        <button type="submit" class="panel-btn panel-btn-primary"><i class="fas fa-save"></i> Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Модальное окно: подтверждение удаления слайда -->
+<div id="modal-delete-slide" class="panel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px 28px;max-width:400px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.18);">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+      <div style="width:44px;height:44px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="fas fa-trash" style="color:#e74c3c;font-size:18px;"></i>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Удалить слайд?</div>
+        <div style="font-size:13px;color:#7b8099;">Это действие нельзя отменить.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+      <button type="button" class="panel-btn panel-btn-secondary" onclick="closeModal('modal-delete-slide')">Отмена</button>
+      <button type="button" id="del-slide-confirm-btn" class="panel-btn panel-btn-danger" onclick="confirmDeleteSlide()">
+        <i class="fas fa-trash"></i> Удалить
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+var _slideUploadedImageUrl = '';
+
+function buildGradient() {
+  var c1 = document.getElementById('sf-color1').value;
+  var c2 = document.getElementById('sf-color2').value;
+  var angle = document.getElementById('sf-angle').value;
+  var g = 'linear-gradient(' + angle + 'deg,' + c1 + ' 0%,' + c2 + ' 100%)';
+  document.getElementById('sf-gradient').value = g;
+  document.getElementById('sf-gradient-preview').style.background = g;
+  document.getElementById('slide-preview-box').style.background = g;
+}
+
+function hexFromGradient(gradient) {
+  var matches = gradient.match(/#[0-9a-fA-F]{3,6}/g);
+  return matches || ['#0a9e94', '#48D1CC'];
+}
+
+function angleFromGradient(gradient) {
+  var m = gradient.match(/(\d+)deg/);
+  return m ? m[1] : '135';
+}
+
+function updateSlideVisualPreview() {
+  var val = document.getElementById('sf-visual').value || '🛍️';
+  if (!_slideUploadedImageUrl && !document.getElementById('sf-image-url').value.trim()) {
+    document.getElementById('prev-emoji').textContent = val;
+    document.getElementById('prev-img').style.display = 'none';
+    document.getElementById('prev-emoji').style.display = '';
+  }
+}
+
+function setSlidePreviewImage(src) {
+  if (src) {
+    document.getElementById('prev-img').src = src;
+    document.getElementById('prev-img').style.display = 'block';
+    document.getElementById('prev-emoji').style.display = 'none';
+    document.getElementById('slide-img-preview').src = src;
+    document.getElementById('slide-img-preview-wrap').style.display = 'flex';
+  } else {
+    document.getElementById('prev-img').style.display = 'none';
+    document.getElementById('prev-emoji').style.display = '';
+    document.getElementById('slide-img-preview-wrap').style.display = 'none';
+  }
+}
+
+function updateSlideImgFromUrl(val) {
+  _slideUploadedImageUrl = val.trim();
+  setSlidePreviewImage(val.trim() || '');
+  if (!val.trim()) {
+    document.getElementById('prev-emoji').textContent = document.getElementById('sf-visual').value || '🛍️';
+  }
+}
+
+function switchSlideImgTab(tab) {
+  var isUrl = tab === 'url';
+  document.getElementById('slide-img-url-block').style.display  = isUrl ? '' : 'none';
+  document.getElementById('slide-img-file-block').style.display = isUrl ? 'none' : '';
+  document.getElementById('slide-img-tab-url').style.cssText  = isUrl
+    ? 'padding:5px 14px;border-radius:6px;border:1.5px solid #2bb5a0;background:#2bb5a0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;'
+    : 'padding:5px 14px;border-radius:6px;border:1.5px solid #e5e7ef;background:#f0f2f8;color:#4a4f6a;font-size:12px;font-weight:600;cursor:pointer;';
+  document.getElementById('slide-img-tab-file').style.cssText = isUrl
+    ? 'padding:5px 14px;border-radius:6px;border:1.5px solid #e5e7ef;background:#f0f2f8;color:#4a4f6a;font-size:12px;font-weight:600;cursor:pointer;'
+    : 'padding:5px 14px;border-radius:6px;border:1.5px solid #2bb5a0;background:#2bb5a0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;';
+}
+
+async function previewSlideFile(input) {
+  if (!input.files || !input.files[0]) return;
+  var fd = new FormData();
+  fd.append('image', input.files[0]);
+  var r = await fetch('/api/upload', { method: 'POST', credentials: 'include', body: fd });
+  var d = await r.json();
+  if (d.success) {
+    _slideUploadedImageUrl = d.imageUrl;
+    document.getElementById('sf-image-url').value = d.imageUrl;
+    setSlidePreviewImage(d.imageUrl);
+  } else {
+    showToast('Ошибка загрузки файла', 'error');
+  }
+  input.value = '';
+}
+
+function clearSlideImg() {
+  _slideUploadedImageUrl = '';
+  document.getElementById('sf-image-url').value = '';
+  document.getElementById('sf-image-file').value = '';
+  setSlidePreviewImage('');
+  document.getElementById('prev-emoji').textContent = document.getElementById('sf-visual').value || '🛍️';
+}
+
+function resetSlideImgFields() {
+  _slideUploadedImageUrl = '';
+  document.getElementById('sf-image-url').value = '';
+  document.getElementById('sf-image-file').value = '';
+  document.getElementById('slide-img-preview-wrap').style.display = 'none';
+  document.getElementById('prev-img').style.display = 'none';
+  document.getElementById('prev-emoji').style.display = '';
+  switchSlideImgTab('url');
+}
+
+function openAddSlide() {
+  document.getElementById('modal-slide-title').textContent = 'Добавить слайд';
+  document.getElementById('slide-form').reset();
+  document.getElementById('sf-id').value = '';
+  document.getElementById('sf-color1').value = '#0a9e94';
+  document.getElementById('sf-color2').value = '#48D1CC';
+  document.getElementById('sf-angle').value = '135';
+  document.getElementById('prev-title').textContent = 'Заголовок слайда';
+  document.getElementById('prev-badge').textContent = '';
+  document.getElementById('prev-sub').textContent = '';
+  document.getElementById('prev-emoji').textContent = '🛍️';
+  resetSlideImgFields();
+  buildGradient();
+  openModal('modal-slide');
+}
+
+function editSlide(s) {
+  document.getElementById('modal-slide-title').textContent = 'Редактировать слайд';
+  document.getElementById('sf-id').value = s.id;
+  document.getElementById('sf-id').dataset.active = s.is_active;
+  document.getElementById('sf-title').value  = s.title || '';
+  document.getElementById('sf-sub').value    = s.subtitle || '';
+  document.getElementById('sf-badge').value  = s.badge || '';
+  document.getElementById('sf-desc').value   = s.description || '';
+  document.getElementById('sf-visual').value = s.visual || '🛍️';
+  var colors = hexFromGradient(s.gradient || '');
+  document.getElementById('sf-color1').value = colors[0] || '#0a9e94';
+  document.getElementById('sf-color2').value = colors[colors.length-1] || '#48D1CC';
+  document.getElementById('sf-angle').value  = angleFromGradient(s.gradient || '');
+  document.getElementById('sf-order').value  = s.sort_order || 0;
+  document.getElementById('sf-btn1t').value  = s.btn1_text || '';
+  document.getElementById('sf-btn1l').value  = s.btn1_link || '';
+  document.getElementById('sf-btn2t').value  = s.btn2_text || '';
+  document.getElementById('sf-btn2l').value  = s.btn2_link || '';
+  document.getElementById('prev-title').textContent = s.title;
+  document.getElementById('prev-badge').textContent = s.badge || '';
+  document.getElementById('prev-sub').textContent   = s.subtitle || '';
+  resetSlideImgFields();
+  if (s.image_url) {
+    _slideUploadedImageUrl = s.image_url;
+    document.getElementById('sf-image-url').value = s.image_url;
+    setSlidePreviewImage(s.image_url);
+  } else {
+    document.getElementById('prev-emoji').textContent = s.visual || '🛍️';
+  }
+  buildGradient();
+  openModal('modal-slide');
+}
+
+async function saveSlide(e) {
+  e.preventDefault();
+  var id = document.getElementById('sf-id').value;
+
+  // Загрузка файла если выбран (и ещё не загружен)
+  var fileInput = document.getElementById('sf-image-file');
+  if (fileInput.files && fileInput.files[0] && !_slideUploadedImageUrl) {
+    var fd = new FormData();
+    fd.append('image', fileInput.files[0]);
+    var upRes = await fetch('/api/upload', { method: 'POST', credentials: 'include', body: fd });
+    var upData = await upRes.json();
+    if (!upRes.ok || !upData.success) { showToast('Ошибка загрузки фото', 'error'); return; }
+    _slideUploadedImageUrl = upData.imageUrl;
+  }
+
+  var imageUrl = document.getElementById('sf-image-url').value.trim() || _slideUploadedImageUrl || '';
+
+  var body = {
+    title:       document.getElementById('sf-title').value,
+    subtitle:    document.getElementById('sf-sub').value,
+    badge:       document.getElementById('sf-badge').value,
+    description: document.getElementById('sf-desc').value,
+    visual:      document.getElementById('sf-visual').value || '🛍️',
+    image_url:   imageUrl || null,
+    gradient:    document.getElementById('sf-gradient').value || 'linear-gradient(135deg,#0a9e94 0%,#2dbdb6 55%,#48D1CC 100%)',
+    btn1_text:   document.getElementById('sf-btn1t').value,
+    btn1_link:   document.getElementById('sf-btn1l').value || '/',
+    btn2_text:   document.getElementById('sf-btn2t').value,
+    btn2_link:   document.getElementById('sf-btn2l').value,
+    sort_order:  parseInt(document.getElementById('sf-order').value) || 0,
+    is_active:   id ? parseInt(document.getElementById('sf-id').dataset.active || '1') : 1,
+  };
+  var url = id ? '/api/panel/promotions/'+id : '/api/panel/promotions';
+  var res = await fetch(url, { method: id?'PUT':'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify(body) });
+  var data = await res.json();
+  if (res.ok && data.success) {
+    showToast('Слайд сохранён', 'success');
+    setTimeout(function(){ location.reload(); }, 700);
+  } else showToast(data.message || 'Ошибка', 'error');
+}
+
+async function moveSlide(id, dir) {
+  var res = await fetch('/api/panel/promotions/'+id+'/move', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include',
+    body: JSON.stringify({ dir })
+  });
+  if (res.ok) location.reload();
+  else showToast('Ошибка перемещения', 'error');
+}
+
+var _delSlideId = null;
+
+function deleteSlide(id) {
+  _delSlideId = id;
+  openModal('modal-delete-slide');
+}
+
+async function confirmDeleteSlide() {
+  if (!_delSlideId) return;
+  var btn = document.getElementById('del-slide-confirm-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Удаление...';
+  var res = await fetch('/api/panel/promotions/' + _delSlideId, { method:'DELETE', credentials:'include' });
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-trash"></i> Удалить';
+  closeModal('modal-delete-slide');
+  if (res.ok) { showToast('Слайд удалён', 'success'); setTimeout(function(){ location.reload(); }, 700); }
+  else showToast('Ошибка', 'error');
+}
+
+async function toggleSlide(id, active) {
+  var res = await fetch('/api/panel/promotions/'+id, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({ is_active: active ? 1 : 0 })
+  });
+  if (!res.ok) showToast('Ошибка', 'error');
+}
+</script>
+
+<%- include('layout-end') %>

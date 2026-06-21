@@ -1,0 +1,166 @@
+<%- include('layout-start', { title: 'Заказы', page, topbarExtra: '' }) %>
+
+<%
+var statuses = { new:'Новый', paid:'Оплачен', shipped:'Отправлен', delivered:'Доставлен', cancelled:'Отменён' };
+var total = orders.length;
+var newC = orders.filter(function(o){ return o.status==='new'; }).length;
+var active = orders.filter(function(o){ return o.status==='paid'||o.status==='shipped'; }).length;
+var done = orders.filter(function(o){ return o.status==='delivered'; }).length;
+%>
+
+<!-- Статистика -->
+<div class="panel-stats">
+  <div class="panel-stat-card">
+    <div class="panel-stat-icon" style="background:#eff6ff;color:#2563eb;"><i class="fas fa-receipt"></i></div>
+    <div><div class="panel-stat-value"><%= total %></div><div class="panel-stat-label">Всего заказов</div></div>
+  </div>
+  <div class="panel-stat-card">
+    <div class="panel-stat-icon" style="background:#fefce8;color:#ca8a04;"><i class="fas fa-clock"></i></div>
+    <div><div class="panel-stat-value"><%= newC %></div><div class="panel-stat-label">Новые</div></div>
+  </div>
+  <div class="panel-stat-card">
+    <div class="panel-stat-icon" style="background:#f0fdf4;color:#16a34a;"><i class="fas fa-truck"></i></div>
+    <div><div class="panel-stat-value"><%= active %></div><div class="panel-stat-label">В работе</div></div>
+  </div>
+  <div class="panel-stat-card">
+    <div class="panel-stat-icon" style="background:#f0f9ff;color:#0284c7;"><i class="fas fa-check-double"></i></div>
+    <div><div class="panel-stat-value"><%= done %></div><div class="panel-stat-label">Доставлено</div></div>
+  </div>
+</div>
+
+<!-- Таблица заказов -->
+<div class="panel-card">
+  <div class="panel-card-header">
+    <span class="panel-card-title"><i class="fas fa-list"></i> Список заказов</span>
+  </div>
+  <% if (!orders.length) { %>
+  <div style="text-align:center;padding:40px;color:#7b8099;">Заказов пока нет</div>
+  <% } else { %>
+  <div style="overflow-x:auto;">
+  <table class="panel-table" id="orders-table">
+    <thead><tr>
+      <th data-col="0" data-type="number">#</th>
+      <th data-col="1" data-type="text">Покупатель</th>
+      <th>Телефон</th><th>Адрес</th>
+      <th data-col="4" data-type="number">Сумма</th>
+      <th>Оплата</th>
+      <th>Статус</th>
+      <th data-col="7" data-type="date">Дата</th>
+      <th></th>
+    </tr></thead>
+    <tbody>
+    <% orders.forEach(function(o) { %>
+    <tr>
+      <td><strong>#<%= o.id %></strong></td>
+      <td>
+        <div style="font-weight:600;font-size:13px;"><%= o.customer_name %></div>
+        <% if (o.username) { %><div style="font-size:11px;color:#7b8099;">@<%= o.username %></div><% } %>
+      </td>
+      <td style="font-size:13px;"><%= o.phone %></td>
+      <td style="font-size:12px;color:#7b8099;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= o.address %>"><%= o.address %></td>
+      <td><strong><%= Number(o.total_price).toLocaleString('ru-RU') %> ₽</strong></td>
+      <td style="font-size:12px;">
+        <% if (o.payment_method==='online') { %>
+        <span style="color:#2bb5a0;"><i class="fas fa-credit-card"></i> Карта</span>
+        <% } else { %>
+        <span style="color:#7b8099;"><i class="fas fa-money-bill-wave"></i> Нал./карта</span>
+        <% } %>
+      </td>
+      <td>
+        <div class="status-wrap" style="position:relative;display:inline-block;">
+          <select class="order-status-sel" data-id="<%= o.id %>">
+            <% ['new','paid','shipped','delivered','cancelled'].forEach(function(s){ %>
+            <option value="<%= s %>" <%= o.status===s ? 'selected' : '' %>><%= statuses[s] %></option>
+            <% }) %>
+          </select>
+          <i class="fas fa-chevron-down" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;pointer-events:none;"></i>
+        </div>
+      </td>
+      <td style="font-size:12px;color:#7b8099;white-space:nowrap;">
+        <%= new Date(o.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'}) %>
+      </td>
+      <td>
+        <button class="panel-btn panel-btn-secondary panel-btn-sm" onclick="viewItems(<%= o.id %>)">
+          <i class="fas fa-eye"></i>
+        </button>
+      </td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+  <% } %>
+</div>
+
+<!-- Модальное окно товаров заказа -->
+<div id="modal-items" class="panel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 id="modal-items-title" style="font-size:17px;font-weight:700;">Состав заказа</h3>
+      <button onclick="closeModal('modal-items')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#7b8099;">×</button>
+    </div>
+    <div id="modal-items-body"></div>
+  </div>
+</div>
+
+<script>
+var STATUS_STYLES = {
+  new:       { bg:'#fef9ec', color:'#92400e', border:'#fcd34d', icon:'fa-clock' },
+  paid:      { bg:'#eff6ff', color:'#1d4ed8', border:'#93c5fd', icon:'fa-credit-card' },
+  shipped:   { bg:'#f5f3ff', color:'#6d28d9', border:'#c4b5fd', icon:'fa-truck' },
+  delivered: { bg:'#f0fdf4', color:'#15803d', border:'#86efac', icon:'fa-check-circle' },
+  cancelled: { bg:'#fef2f2', color:'#b91c1c', border:'#fca5a5', icon:'fa-times-circle' },
+};
+
+function applyStatusColor(sel) {
+  var s = STATUS_STYLES[sel.value] || {};
+  sel.style.background   = s.bg     || '#f0f2f8';
+  sel.style.color        = s.color  || '#4a4f6a';
+  sel.style.borderColor  = s.border || '#e5e7ef';
+  var icon = sel.parentElement.querySelector('i');
+  if (icon) icon.style.color = s.color || '#4a4f6a';
+}
+
+initSortable('orders-table');
+document.querySelectorAll('.order-status-sel').forEach(function(sel) {
+  applyStatusColor(sel);
+  sel.addEventListener('change', async function() {
+    applyStatusColor(this);
+    var id = this.dataset.id, status = this.value;
+    var res = await fetch('/api/panel/orders/'+id+'/status', {
+      method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({ status })
+    });
+    if (res.ok) showToast('Статус обновлён', 'success');
+    else showToast('Ошибка обновления', 'error');
+  });
+});
+
+async function viewItems(id) {
+  document.getElementById('modal-items-title').textContent = 'Состав заказа #' + id;
+  document.getElementById('modal-items-body').innerHTML = '<div style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i></div>';
+  openModal('modal-items');
+  var res = await fetch('/api/panel/orders/'+id+'/items', { credentials:'include' });
+  var data = await res.json();
+  if (!data.success || !data.data.length) {
+    document.getElementById('modal-items-body').innerHTML = '<p style="color:#7b8099;text-align:center;">Товары не найдены</p>';
+    return;
+  }
+  var total = 0;
+  var html = data.data.map(function(item) {
+    var sub = Number(item.price) * item.quantity;
+    total += sub;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0f2f8;">'
+      +'<img src="'+(item.image_url||'/images/placeholder.jpg')+'" style="width:48px;height:48px;object-fit:contain;border-radius:8px;background:#f8f9fd;padding:4px;" onerror="this.src=\'/images/placeholder.jpg\'">'
+      +'<div style="flex:1;font-size:14px;font-weight:500;">'+item.name+'</div>'
+      +'<div style="font-size:12px;color:#7b8099;">×'+item.quantity+'</div>'
+      +'<div style="font-size:14px;font-weight:700;white-space:nowrap;">'+sub.toLocaleString('ru-RU')+' ₽</div>'
+      +'</div>';
+  }).join('');
+  html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;margin-top:14px;padding-top:10px;">'
+        + '<span>Итого</span><span>'+total.toLocaleString('ru-RU')+' ₽</span></div>';
+  document.getElementById('modal-items-body').innerHTML = html;
+}
+</script>
+
+<%- include('layout-end') %>

@@ -1,0 +1,208 @@
+<%- include('../partials/header', { title: 'Профиль' }) %>
+
+<main>
+  <div class="container">
+    <div class="profile-layout">
+
+      <!-- ══ SIDEBAR ══ -->
+      <aside class="profile-sidebar">
+
+        <!-- Карточка пользователя -->
+        <div class="profile-user-card">
+          <div class="profile-user-card-bg">
+            <div class="profile-avatar"><%= user.username.charAt(0).toUpperCase() %></div>
+            <div class="profile-user-name"><%= user.username %></div>
+            <% if (user.email) { %>
+            <div class="profile-user-email"><i class="fas fa-envelope"></i> <%= user.email %></div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Навигация -->
+        <nav class="profile-nav">
+          <a href="/profile" class="active">
+            <i class="fas fa-receipt"></i>
+            <span>Мои заказы</span>
+            <% if (orders.length) { %><em class="profile-nav-badge"><%= orders.length %></em><% } %>
+          </a>
+          <a href="/favorites">
+            <i class="far fa-heart"></i>
+            <span>Избранное</span>
+          </a>
+          <a href="/cart">
+            <i class="fas fa-shopping-cart"></i>
+            <span>Корзина</span>
+          </a>
+          <% if (user.role === 'admin' || user.role === 'super_admin') { %>
+          <div class="profile-nav-sep"></div>
+          <a href="/panel">
+            <i class="fas fa-shield-alt"></i>
+            <span>Панель администратора</span>
+          </a>
+          <% } %>
+          <div class="profile-nav-sep"></div>
+          <a href="/logout" class="profile-nav-logout"
+            onclick="event.preventDefault();document.getElementById('logout-f').submit();">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Выйти</span>
+          </a>
+          <form id="logout-f" action="/logout" method="POST" style="display:none;"></form>
+        </nav>
+
+      </aside>
+
+      <!-- ══ MAIN ══ -->
+      <div class="profile-content">
+
+        <!-- Уведомления -->
+        <% if (error) { %>
+        <div class="profile-alert profile-alert-error">
+          <i class="fas fa-exclamation-circle"></i> <%= error %>
+        </div>
+        <% } %>
+        <% if (success) { %>
+        <div class="profile-alert profile-alert-success">
+          <i class="fas fa-check-circle"></i> <%= success %>
+        </div>
+        <% } %>
+
+        <!-- ─ Редактирование профиля ─ -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <h3><i class="fas fa-user-edit"></i> Редактировать профиль</h3>
+          </div>
+          <div class="profile-card-body">
+            <form method="POST" action="/profile/update" id="profileForm" novalidate>
+
+              <div class="profile-fields-row">
+                <div class="form-group">
+                  <label class="form-label">Имя пользователя</label>
+                  <div class="auth-input-wrap">
+                    <i class="fas fa-user auth-field-icon"></i>
+                    <input class="form-control" type="text" name="new_username"
+                      value="<%= user.username %>" minlength="6" maxlength="24">
+                  </div>
+                  <div class="profile-hint">От 6 до 24 символов</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <div class="auth-input-wrap">
+                    <i class="fas fa-envelope auth-field-icon"></i>
+                    <input class="form-control" type="email" value="<%= user.email || 'Не указан' %>"
+                      disabled style="cursor:not-allowed;opacity:0.6;">
+                  </div>
+                  <div class="profile-hint">Email нельзя изменить</div>
+                </div>
+              </div>
+
+              <div class="profile-divider"><span>Смена пароля</span></div>
+
+              <div class="profile-fields-row profile-fields-row--3">
+                <div class="form-group">
+                  <label class="form-label">Текущий пароль</label>
+                  <div class="auth-input-wrap">
+                    <i class="fas fa-lock auth-field-icon"></i>
+                    <input class="form-control" type="password" name="current_password"
+                      placeholder="Введите текущий пароль" maxlength="24">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Новый пароль</label>
+                  <div class="auth-input-wrap">
+                    <i class="fas fa-key auth-field-icon"></i>
+                    <input class="form-control" type="password" name="new_password"
+                      placeholder="Минимум 6 символов" maxlength="24">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Повторите пароль</label>
+                  <div class="auth-input-wrap">
+                    <i class="fas fa-key auth-field-icon"></i>
+                    <input class="form-control" type="password" name="confirm_password"
+                      placeholder="Повторите новый пароль" maxlength="24">
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;">
+                <button type="submit" class="btn btn-primary" style="min-width:180px;">
+                  <i class="fas fa-save"></i> Сохранить изменения
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+
+        <!-- ─ Мои заказы ─ -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <h3><i class="fas fa-receipt"></i> Мои заказы</h3>
+            <% if (orders.length) { %>
+            <span class="profile-orders-count">
+              <%= orders.length %> <%= orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов' %>
+            </span>
+            <% } %>
+          </div>
+          <div class="profile-card-body">
+
+            <% if (!orders.length) { %>
+            <div class="empty-state" style="padding:32px 0;">
+              <i class="fas fa-box-open"></i>
+              <h3>Заказов пока нет</h3>
+              <p>Начните покупки в нашем каталоге</p>
+              <a href="/" class="btn btn-primary">В каталог</a>
+            </div>
+            <% } else { %>
+              <% orders.forEach(order => { %>
+              <div class="order-card">
+                <div class="order-card-header">
+                  <div>
+                    <div class="order-number">Заказ #<%= order.id %></div>
+                    <div class="order-date">
+                      <i class="far fa-clock"></i>
+                      <%= new Date(order.created_at).toLocaleDateString('ru-RU', {day:'2-digit',month:'long',year:'numeric'}) %>
+                    </div>
+                  </div>
+                  <div style="text-align:right;">
+                    <span class="badge badge-<%= order.status %>">
+                      <%= ({new:'Новый',paid:'Оплачен',shipped:'Отправлен',delivered:'Доставлен',cancelled:'Отменён'})[order.status] || order.status %>
+                    </span>
+                    <div style="font-size:16px;font-weight:700;margin-top:6px;color:var(--primary-dark);">
+                      <%= Number(order.total_price).toLocaleString('ru-RU') %> ₽
+                    </div>
+                  </div>
+                </div>
+                <% if (order.items && order.items.length) { %>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <% order.items.slice(0, 4).forEach(item => { %>
+                  <div class="order-item-chip">
+                    <img src="<%= item.image_url || '/images/placeholder.jpg' %>"
+                      onerror="this.onerror=null;this.src='/images/placeholder.jpg'">
+                    <span><%= item.name.slice(0, 28) %><%= item.name.length > 28 ? '…' : '' %></span>
+                    <em>×<%= item.quantity %></em>
+                  </div>
+                  <% }) %>
+                  <% if (order.items.length > 4) { %>
+                  <div class="order-item-more">+<%= order.items.length - 4 %> ещё</div>
+                  <% } %>
+                </div>
+                <% } %>
+                <% if (order.address) { %>
+                <div class="order-address">
+                  <i class="fas fa-map-marker-alt"></i> <%= order.address %>
+                </div>
+                <% } %>
+              </div>
+              <% }) %>
+            <% } %>
+
+          </div>
+        </div>
+
+      </div><!-- /profile-content -->
+    </div>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,135 @@
+<%- include('../partials/header', {
+  title: categoryName,
+  breadcrumbs: [{ label: categoryName, url: '/category/' + slug }],
+  slug
+}) %>
+
+<main>
+  <div class="container">
+    <!-- Сортировка — на всю ширину, над обеими колонками -->
+    <div class="sort-bar" style="margin-top:28px;">
+      <div class="products-count">Найдено: <strong><%= products.length %></strong> товаров</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label style="font-size:14px;color:var(--text-muted);">Сортировка:</label>
+        <select id="sort-select" onchange="applySort(this.value)">
+          <option value="default" <%= filters.sort === 'default' ? 'selected' : '' %>>По умолчанию</option>
+          <option value="price_asc" <%= filters.sort === 'price_asc' ? 'selected' : '' %>>Цена: по возрастанию</option>
+          <option value="price_desc" <%= filters.sort === 'price_desc' ? 'selected' : '' %>>Цена: по убыванию</option>
+          <option value="name" <%= filters.sort === 'name' ? 'selected' : '' %>>По названию</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="page-layout" style="padding-top:0;">
+
+      <!-- Фильтры -->
+      <aside class="filter-sidebar">
+        <h3 class="filter-title"><i class="fas fa-filter" style="color:var(--primary)"></i> Фильтры</h3>
+        <form id="filter-form" method="GET">
+
+          <!-- Цена -->
+          <div class="filter-group">
+            <div class="filter-group-title">Цена (₽)</div>
+            <div class="price-range">
+              <input type="number" name="minPrice" id="minPrice" placeholder="От"
+                value="<%= filters.minPrice %>"
+                min="0" max="<%= priceRange.maxP || 1000000 %>">
+              <input type="number" name="maxPrice" id="maxPrice" placeholder="До"
+                value="<%= filters.maxPrice %>"
+                min="0" max="<%= priceRange.maxP || 1000000 %>">
+            </div>
+          </div>
+
+          <!-- Бренды -->
+          <% if (brands.length > 0) { %>
+          <div class="filter-group" style="margin-bottom:0;">
+            <div class="filter-group-title">Бренд</div>
+            <% brands.forEach(b => { %>
+            <label class="filter-option">
+              <input type="checkbox" name="brand" value="<%= b %>"
+                <%= filters.brand.includes(b) ? 'checked' : '' %>>
+              <%= b %>
+            </label>
+            <% }) %>
+          </div>
+          <% } %>
+
+          <div class="filter-actions">
+            <button type="submit" class="btn btn-primary" style="flex:1;">Применить</button>
+            <a href="/category/<%= slug %>" class="btn btn-secondary" style="flex:1;justify-content:center;">Сбросить</a>
+          </div>
+        </form>
+      </aside>
+
+      <!-- Товары -->
+      <div class="products-area">
+
+        <% if (products.length === 0) { %>
+        <div class="empty-state">
+          <i class="fas fa-search"></i>
+          <h3>Товары не найдены</h3>
+          <p>Попробуйте изменить фильтры или сбросить их</p>
+          <a href="/category/<%= slug %>" class="btn btn-primary">Сбросить фильтры</a>
+        </div>
+        <% } else { %>
+        <div class="products-grid">
+          <% products.forEach(product => { %>
+          <%- include('../partials/product-card', { product }) %>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
+
+<script>
+function applySort(val) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('sort', val);
+  window.location.href = url.toString();
+}
+
+async function addToCart(productId, btn) {
+  const res = await fetch('/api/cart/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ productId, quantity: 1 })
+  });
+  if (res.status === 401) { showToast('Войдите в аккаунт, чтобы добавить товар в корзину. <a href="/login">Войти</a>', 'warning', 5000); return; }
+  if (res.ok) {
+    btn.classList.add('added');
+    btn.innerHTML = '<i class="fas fa-check"></i> Добавлено';
+    showToast('Товар добавлен в корзину', 'success');
+    updateCartCount();
+    setTimeout(() => { btn.classList.remove('added'); btn.innerHTML = '<i class="fas fa-shopping-cart"></i> В корзину'; }, 2000);
+  }
+}
+
+async function toggleFav(productId, btn) {
+  const isFav = btn.classList.contains('active');
+  const res = await fetch(isFav ? '/favorites/remove' : '/favorites/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ productId })
+  });
+  if (res.status === 401) { showToast('Войдите в аккаунт, чтобы добавить в избранное. <a href="/login">Войти</a>', 'warning', 5000); return; }
+  if (res.ok) {
+    btn.classList.toggle('active');
+    showToast(isFav ? 'Удалено из избранного' : 'Добавлено в избранное', isFav ? 'info' : 'success');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch('/api/favorites', { credentials: 'include' });
+    if (res.ok) {
+      const { data } = await res.json();
+      document.querySelectorAll('.product-card-fav').forEach(btn => {
+        if (data.includes(parseInt(btn.dataset.id))) btn.classList.add('active');
+      });
+    }
+  } catch {}
+});
+</script>

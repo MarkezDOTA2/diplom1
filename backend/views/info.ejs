@@ -1,0 +1,78 @@
+<%- include('partials/header', { title: 'О нас', breadcrumbs: [{ label: 'О нас', url: '/info' }] }) %>
+
+<main>
+  <div class="container" style="padding:40px 20px;max-width:900px;">
+    <h1 class="section-title">О компании StoreChicco</h1>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-bottom:40px;">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:12px;color:var(--primary-dark);">
+          <i class="fas fa-star" style="color:var(--primary)"></i> Наша миссия
+        </h2>
+        <p style="font-size:15px;line-height:1.8;color:var(--text-muted);">
+          StoreChicco - это современный интернет-магазин электроники, созданный для того, чтобы каждый мог получить доступ к лучшим технологиям по честным ценам. Мы работаем с ведущими мировыми брендами и гарантируем подлинность каждого товара.
+        </p>
+      </div>
+      <div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:12px;color:var(--primary-dark);">
+          <i class="fas fa-shield-alt" style="color:var(--primary)"></i> Гарантия качества
+        </h2>
+        <p style="font-size:15px;line-height:1.8;color:var(--text-muted);">
+          Все товары в нашем магазине проходят строгий контроль качества. Мы предоставляем официальную гарантию производителя и 14 дней на возврат по любой причине. Ваше доверие - наш главный приоритет.
+        </p>
+      </div>
+    </div>
+
+    <div style="background:var(--primary-light);border-radius:var(--radius);padding:28px;margin-bottom:36px;">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:20px;color:var(--primary-dark);">Почему выбирают нас?</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+        <% [
+          {icon:'fa-truck', title:'Быстрая доставка', text:'Доставим заказ в течение 1-3 рабочих дней по всей России'},
+          {icon:'fa-headset', title:'Поддержка 24/7', text:'Наши специалисты готовы помочь в любое время суток'},
+          {icon:'fa-tag', title:'Выгодные цены', text:'Мониторим рынок и предлагаем лучшие цены без скрытых комиссий'},
+          {icon:'fa-undo', title:'Простой возврат', text:'Вернём деньги в течение 14 дней без вопросов'},
+          {icon:'fa-certificate', title:'Оригинальный товар', text:'Только официальные поставки и авторизованные дистрибьюторы'},
+          {icon:'fa-lock', title:'Безопасная оплата', text:'Защищённые платежи с шифрованием SSL'}
+        ].forEach(item => { %>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="width:40px;height:40px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-sm);">
+            <i class="fas <%= item.icon %>" style="color:var(--primary);font-size:16px;"></i>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;"><%= item.title %></div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.5;"><%= item.text %></div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+
+    <div>
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:16px;">Контакты</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);">
+          <i class="fas fa-map-marker-alt" style="color:var(--primary);font-size:20px;margin-bottom:8px;"></i>
+          <div style="font-weight:600;margin-bottom:4px;">Адрес</div>
+          <div style="font-size:14px;color:var(--text-muted);">Ангарск, ул. Примерная, 123</div>
+        </div>
+        <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);">
+          <i class="fas fa-phone" style="color:var(--primary);font-size:20px;margin-bottom:8px;"></i>
+          <div style="font-weight:600;margin-bottom:4px;">Телефон</div>
+          <div style="font-size:14px;color:var(--text-muted);">+7 (950) 123-42-42</div>
+        </div>
+        <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);">
+          <i class="fas fa-envelope" style="color:var(--primary);font-size:20px;margin-bottom:8px;"></i>
+          <div style="font-weight:600;margin-bottom:4px;">Email</div>
+          <div style="font-size:14px;color:var(--text-muted);">info@storechicco.ru</div>
+        </div>
+        <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);">
+          <i class="fas fa-clock" style="color:var(--primary);font-size:20px;margin-bottom:8px;"></i>
+          <div style="font-weight:600;margin-bottom:4px;">Режим работы</div>
+          <div style="font-size:14px;color:var(--text-muted);">Ежедневно 10:00-21:00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('partials/footer') %>

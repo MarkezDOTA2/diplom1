@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' | StoreChicco' : 'StoreChicco — Электроника' %></title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <%- typeof extraHead !== 'undefined' ? extraHead : '' %>
+</head>
+<body>
+
+<!-- ШАПКА -->
+<header class="site-header">
+  <div class="header-top">
+    <div class="container">
+      <div class="header-top-inner">
+        <div class="header-logo">
+          <a href="/"><span class="logo-text">Store<span class="logo-accent">Chicco</span></span></a>
+        </div>
+
+        <!-- Поиск -->
+        <div class="header-search">
+          <form action="/search" method="get" class="search-form" id="search-form">
+            <input type="text" name="q" id="search-input" placeholder="Поиск товаров, брендов..." autocomplete="off"
+              value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>">
+            <button type="submit"><i class="fas fa-search"></i></button>
+          </form>
+          <div class="search-dropdown" id="search-dropdown"></div>
+        </div>
+
+        <!-- Иконки -->
+        <div class="header-actions">
+          <a href="/favorites" class="header-action-btn" title="Избранное">
+            <i class="far fa-heart"></i>
+            <span class="action-label">Избранное</span>
+          </a>
+          <a href="/cart" class="header-action-btn cart-btn" title="Корзина">
+            <i class="fas fa-shopping-cart cart-icon-empty" id="cart-icon"></i>
+            <span class="cart-badge" id="cart-count">0</span>
+            <span class="action-label">Корзина</span>
+          </a>
+          <% if (user) { %>
+            <a href="/profile" class="header-action-btn" title="Профиль">
+              <i class="far fa-user"></i>
+              <span class="action-label"><%= user.username %></span>
+            </a>
+          <% } else { %>
+            <a href="/login" class="header-action-btn" title="Войти">
+              <i class="far fa-user"></i>
+              <span class="action-label">Войти</span>
+            </a>
+          <% } %>
+        </div>
+
+        <!-- Бургер-меню -->
+        <button class="burger-btn" id="burger-btn" aria-label="Меню">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Навигация по категориям -->
+  <nav class="header-nav" id="header-nav">
+    <div class="container">
+      <ul class="nav-list">
+        <li><a href="/" class="nav-link <%= typeof currentPage !== 'undefined' && currentPage === 'home' ? 'active' : '' %>">
+          <i class="fas fa-home"></i> Главная
+        </a></li>
+        <% if (typeof categories !== 'undefined') { %>
+          <%
+            const _navIcons = {
+              smartphones:   'fas fa-mobile-alt',
+              laptops:       'fas fa-laptop',
+              tvs:           'fas fa-tv',
+              refrigerators: 'fas fa-snowflake',
+              computers:     'fas fa-desktop',
+              headphones:    'fas fa-headphones',
+              accessories:   'fas fa-plug'
+            };
+          %>
+          <% categories.forEach(cat => { %>
+            <li>
+              <a href="/category/<%= cat.slug %>"
+                 class="nav-link <%= typeof slug !== 'undefined' && slug === cat.slug ? 'active' : '' %>">
+                <i class="<%= _navIcons[cat.slug] || 'fas fa-tag' %>"></i> <%= cat.name %>
+              </a>
+            </li>
+          <% }) %>
+        <% } else { %>
+          <li><a href="/category/smartphones" class="nav-link">📱 Смартфоны</a></li>
+          <li><a href="/category/laptops" class="nav-link">💻 Ноутбуки</a></li>
+          <li><a href="/category/tvs" class="nav-link">📺 Телевизоры</a></li>
+          <li><a href="/category/refrigerators" class="nav-link">🧊 Холодильники</a></li>
+          <li><a href="/category/computers" class="nav-link">🖥️ Компьютеры</a></li>
+          <li><a href="/category/headphones" class="nav-link">🎧 Наушники</a></li>
+          <li><a href="/category/accessories" class="nav-link">🔌 Аксессуары</a></li>
+        <% } %>
+        <li><a href="/info" class="nav-link">О нас</a></li>
+      </ul>
+    </div>
+  </nav>
+</header>
+
+<!-- Хлебные крошки (если переданы) -->
+<% if (typeof breadcrumbs !== 'undefined' && breadcrumbs.length) { %>
+<div class="breadcrumbs">
+  <div class="container">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb-list">
+        <li><a href="/">Главная</a></li>
+        <% breadcrumbs.forEach((bc, i) => { %>
+          <li class="<%= i === breadcrumbs.length - 1 ? 'active' : '' %>">
+            <% if (i < breadcrumbs.length - 1) { %>
+              <a href="<%= bc.url %>"><%= bc.label %></a>
+            <% } else { %>
+              <%= bc.label %>
+            <% } %>
+          </li>
+        <% }) %>
+      </ol>
+    </nav>
+  </div>
+</div>
+<% } %>
+
+<script>
+// Поиск с подсказками
+const searchInput = document.getElementById('search-input');
+const dropdown = document.getElementById('search-dropdown');
+let searchTimer;
+
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    const q = this.value.trim();
+    if (q.length < 2) { dropdown.style.display = 'none'; return; }
+    searchTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const { data } = await res.json();
+        if (!data.length) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = data.map(p => `
+          <a href="/product/${p.id}" class="search-item">
+            <img src="${p.image_url || '/images/placeholder.jpg'}" alt="${p.name}" onerror="this.onerror=null;this.src='/images/placeholder.jpg'">
+            <div>
+              <div class="search-item-name">${p.name}</div>
+              <div class="search-item-price">${Number(p.price).toLocaleString('ru-RU')} ₽</div>
+            </div>
+          </a>
+        `).join('');
+        dropdown.style.display = 'block';
+      } catch {}
+    }, 300);
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.header-search')) dropdown.style.display = 'none';
+  });
+}
+
+// Счётчик корзины
+async function updateCartCount() {
+  try {
+    const res = await fetch('/api/cart', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const count = (data.items || []).reduce((s, i) => s + i.quantity, 0);
+    const el = document.getElementById('cart-count');
+    if (el) { el.textContent = count; el.style.display = count > 0 ? 'flex' : 'none'; }
+    const icon = document.getElementById('cart-icon');
+    if (icon) icon.classList.toggle('cart-icon-empty', count === 0);
+  } catch {}
+}
+
+// Бургер меню
+const burgerBtn = document.getElementById('burger-btn');
+const headerNav = document.getElementById('header-nav');
+if (burgerBtn) {
+  burgerBtn.addEventListener('click', () => {
+    burgerBtn.classList.toggle('open');
+    headerNav.classList.toggle('open');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', updateCartCount);
+</script>

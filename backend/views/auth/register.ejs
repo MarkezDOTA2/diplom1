@@ -1,0 +1,314 @@
+<%- include('../partials/header', { title: 'Регистрация' }) %>
+
+<main>
+  <div class="auth-page">
+    <div class="auth-card">
+
+      <div class="auth-card-header">
+        <div class="auth-logo-icon">
+          <i class="fas fa-user-plus"></i>
+        </div>
+        <h2>Создать аккаунт</h2>
+        <p class="auth-subtitle">Зарегистрируйтесь для отслеживания заказов и избранного</p>
+      </div>
+
+      <div class="auth-card-body">
+        <% if (error) { %>
+        <div class="auth-error" id="regError">
+          <i class="fas fa-exclamation-circle"></i>
+          <span><%= error %></span>
+          <button type="button" onclick="document.getElementById('regError').remove()"
+            style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;font-size:16px;padding:0 2px;line-height:1;">
+            &times;
+          </button>
+        </div>
+        <% } %>
+
+        <form method="POST" action="/register" id="registerForm" novalidate>
+
+          <% var fd = typeof formData !== 'undefined' ? formData : {}; %>
+
+          <div class="form-group">
+            <label class="form-label">Имя пользователя</label>
+            <div class="auth-input-wrap">
+              <i class="fas fa-user auth-field-icon"></i>
+              <input class="form-control" type="text" name="username" id="regUsername"
+                placeholder="Минимум 6 символов" autofocus maxlength="24"
+                value="<%= fd.username || '' %>">
+            </div>
+            <div class="field-error" id="err-reg-username">
+              <i class="fas fa-exclamation-circle"></i>
+              <span>Пожалуйста, введите имя пользователя</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <div class="auth-input-wrap">
+              <i class="fas fa-envelope auth-field-icon"></i>
+              <input class="form-control" type="email" name="email" id="regEmail"
+                placeholder="example@mail.com" maxlength="24"
+                value="<%= fd.email || '' %>">
+            </div>
+            <div class="field-error" id="err-reg-email">
+              <i class="fas fa-exclamation-circle"></i>
+              <span>Введите корректный email-адрес</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Номер телефона</label>
+            <div class="auth-input-wrap">
+              <i class="fas fa-phone auth-field-icon"></i>
+              <input class="form-control" type="tel" name="phone" id="regPhone"
+                placeholder="+7 (999) 000-00-00" maxlength="18" autocomplete="tel"
+                value="<%= fd.phone || '' %>">
+            </div>
+            <div class="field-error" id="err-reg-phone">
+              <i class="fas fa-exclamation-circle"></i>
+              <span>Введите корректный номер телефона</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:24px;">
+            <label class="form-label">Пароль</label>
+            <div class="auth-input-wrap">
+              <i class="fas fa-lock auth-field-icon"></i>
+              <input class="form-control" type="password" name="password" id="regPassword"
+                placeholder="Минимум 6 символов" style="padding-right:42px;" maxlength="24">
+              <button type="button" class="auth-toggle-pw" onclick="togglePw('regPassword', this)" tabindex="-1">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="field-error" id="err-reg-password">
+              <i class="fas fa-exclamation-circle"></i>
+              <span>Пожалуйста, введите пароль</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <i class="fas fa-user-plus"></i> Зарегистрироваться
+          </button>
+        </form>
+
+        <div class="auth-divider">или</div>
+
+        <div class="auth-alt">
+          Уже есть аккаунт? <a href="/login">Войти</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+function togglePw(id, btn) {
+  var inp = document.getElementById(id);
+  var icon = btn.querySelector('i');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    inp.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+}
+
+(function() {
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var PHONE_FULL_RE = /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/;
+
+  function showErr(input, errEl, msg) {
+    input.classList.add('is-invalid');
+    errEl.querySelector('span').textContent = msg;
+    errEl.classList.add('visible');
+  }
+  function clearErr(input, errEl) {
+    input.classList.remove('is-invalid');
+    errEl.classList.remove('visible');
+  }
+
+  var uInp  = document.getElementById('regUsername');
+  var eInp  = document.getElementById('regEmail');
+  var phInp = document.getElementById('regPhone');
+  var pInp  = document.getElementById('regPassword');
+  var uErr  = document.getElementById('err-reg-username');
+  var eErr  = document.getElementById('err-reg-email');
+  var phErr = document.getElementById('err-reg-phone');
+  var pErr  = document.getElementById('err-reg-password');
+
+  // ── Маска телефона ──────────────────────────────────────
+  var PH_PREFIX = '+7 (';
+
+  function getPhDigits(val) {
+    var d = (val || '').replace(/\D/g, '');
+    if (d[0] === '7' || d[0] === '8') d = d.slice(1);
+    return d.slice(0, 10);
+  }
+
+  function buildMask(digits) {
+    if (!digits.length) return PH_PREFIX;
+    var out = '+7 (' + digits.slice(0, 3);
+    if (digits.length > 3) out += ') ' + digits.slice(3, 6);
+    if (digits.length > 6) out += '-'  + digits.slice(6, 8);
+    if (digits.length > 8) out += '-'  + digits.slice(8, 10);
+    return out;
+  }
+
+  // Кол-во цифр номера ДО позиции курсора (пропускаем '+7' на индексах 0-1)
+  function digitsBefore(str, pos) {
+    var n = 0;
+    for (var i = 2; i < pos && i < str.length; i++) {
+      if (/\d/.test(str[i])) n++;
+    }
+    return n;
+  }
+
+  // Позиция курсора в маске ПОСЛЕ n-й цифры номера
+  function posAfterNth(str, n) {
+    if (n <= 0) return PH_PREFIX.length;
+    var cnt = 0;
+    for (var i = 2; i < str.length; i++) {
+      if (/\d/.test(str[i]) && ++cnt === n) return i + 1;
+    }
+    return str.length;
+  }
+
+  function phCommit(digits, curDigitIdx) {
+    phInp.value = digits.length ? buildMask(digits) : PH_PREFIX;
+    var p = posAfterNth(phInp.value, curDigitIdx);
+    phInp.setSelectionRange(p, p);
+    if (PHONE_FULL_RE.test(phInp.value)) clearErr(phInp, phErr);
+  }
+
+  phInp.addEventListener('focus', function() {
+    if (!this.value) this.value = PH_PREFIX;
+  });
+
+  // Весь ввод перехватываем через beforeinput — знаем позицию курсора до изменения
+  phInp.addEventListener('beforeinput', function(e) {
+    e.preventDefault();
+
+    var fmt    = this.value || PH_PREFIX;
+    var s0     = this.selectionStart;
+    var s1     = this.selectionEnd;
+    var digits = getPhDigits(fmt);
+    var di0    = digitsBefore(fmt, s0);  // индекс цифры у левого края курсора
+    var di1    = digitsBefore(fmt, s1);  // индекс цифры у правого края курсора
+    var nd, ni;
+
+    switch (e.inputType) {
+      case 'deleteContentBackward':
+      case 'deleteWordBackward':
+        if (s0 === s1) {
+          // Нет выделения — стираем цифру ПЕРЕД курсором
+          nd = digits.slice(0, Math.max(0, di0 - 1)) + digits.slice(di0);
+          ni = Math.max(0, di0 - 1);
+        } else {
+          // Есть выделение — стираем выделенные цифры
+          nd = digits.slice(0, di0) + digits.slice(di1);
+          ni = di0;
+        }
+        break;
+
+      case 'deleteContentForward':
+      case 'deleteWordForward':
+        if (s0 === s1) {
+          // Нет выделения — стираем цифру ПОСЛЕ курсора
+          nd = digits.slice(0, di0) + digits.slice(di0 + 1);
+          ni = di0;
+        } else {
+          nd = digits.slice(0, di0) + digits.slice(di1);
+          ni = di0;
+        }
+        break;
+
+      default:
+        // Ввод текста / вставка
+        var raw = e.data
+          || (e.dataTransfer && e.dataTransfer.getData('text/plain'))
+          || '';
+        var typed = raw.replace(/\D/g, '');
+        if (!typed) return;
+        // При вставке целого номера убираем ведущие 7/8
+        if (typed.length > 1 && (typed[0] === '7' || typed[0] === '8')) typed = typed.slice(1);
+        typed = typed.slice(0, 10 - (digits.length - (di1 - di0)));
+        nd = (digits.slice(0, di0) + typed + digits.slice(di1)).slice(0, 10);
+        ni = di0 + typed.length;
+        break;
+    }
+
+    phCommit(nd, ni);
+  });
+
+  phInp.addEventListener('blur', function() {
+    if (!this.value || this.value === PH_PREFIX) { this.value = ''; return; }
+    if (!PHONE_FULL_RE.test(this.value))
+      showErr(this, phErr, 'Введите номер полностью: +7 (XXX) XXX-XX-XX');
+    else clearErr(this, phErr);
+  });
+  // ────────────────────────────────────────────────────────
+
+  uInp.addEventListener('input', function() {
+    if (!uInp.value.trim()) return;
+    uInp.value.trim().length < 6
+      ? showErr(uInp, uErr, 'Имя должно содержать минимум 6 символов')
+      : clearErr(uInp, uErr);
+  });
+
+  eInp.addEventListener('input', function() {
+    if (!eInp.value.trim()) return;
+    EMAIL_RE.test(eInp.value.trim())
+      ? clearErr(eInp, eErr)
+      : showErr(eInp, eErr, 'Введите корректный email-адрес');
+  });
+
+  pInp.addEventListener('input', function() {
+    if (!pInp.value) return;
+    pInp.value.length < 6
+      ? showErr(pInp, pErr, 'Пароль должен содержать минимум 6 символов')
+      : clearErr(pInp, pErr);
+  });
+
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    var ok = true;
+
+    if (!uInp.value.trim()) {
+      showErr(uInp, uErr, 'Пожалуйста, введите имя пользователя'); ok = false;
+    } else if (uInp.value.trim().length < 6) {
+      showErr(uInp, uErr, 'Имя должно содержать минимум 6 символов'); ok = false;
+    } else {
+      clearErr(uInp, uErr);
+    }
+
+    if (!eInp.value.trim()) {
+      showErr(eInp, eErr, 'Пожалуйста, введите email-адрес'); ok = false;
+    } else if (!EMAIL_RE.test(eInp.value.trim())) {
+      showErr(eInp, eErr, 'Введите корректный email-адрес'); ok = false;
+    } else {
+      clearErr(eInp, eErr);
+    }
+
+    if (!phInp.value.trim()) {
+      showErr(phInp, phErr, 'Пожалуйста, введите номер телефона'); ok = false;
+    } else if (!PHONE_FULL_RE.test(phInp.value.trim())) {
+      showErr(phInp, phErr, 'Введите номер полностью: +7 (XXX) XXX-XX-XX'); ok = false;
+    } else {
+      clearErr(phInp, phErr);
+    }
+
+    if (!pInp.value) {
+      showErr(pInp, pErr, 'Пожалуйста, введите пароль'); ok = false;
+    } else if (pInp.value.length < 6) {
+      showErr(pInp, pErr, 'Пароль должен содержать минимум 6 символов'); ok = false;
+    } else {
+      clearErr(pInp, pErr);
+    }
+
+    if (!ok) e.preventDefault();
+  });
+})();
+</script>
+
+<%- include('../partials/footer') %>

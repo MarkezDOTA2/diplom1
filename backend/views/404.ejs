@@ -1,0 +1,17 @@
+<%- include('partials/header', { title: 'Страница не найдена' }) %>
+
+<main>
+  <div class="container">
+    <div class="empty-state" style="padding:80px 20px;">
+      <div style="font-size:80px;margin-bottom:16px;">🔍</div>
+      <h3 style="font-size:28px;">404 — Страница не найдена</h3>
+      <p>Запрашиваемая страница не существует или была удалена</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
+        <a href="/" class="btn btn-primary">На главную</a>
+        <a href="javascript:history.back()" class="btn btn-secondary">Назад</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('partials/footer') %>

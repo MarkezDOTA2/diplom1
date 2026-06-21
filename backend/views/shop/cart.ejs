@@ -1,0 +1,147 @@
+<%- include('../partials/header', { title: 'Корзина' }) %>
+
+<main>
+  <div class="container" style="padding:28px 20px;">
+    <h1 style="font-size:24px;font-weight:700;margin-bottom:24px;text-align:center;">🛒 Корзина</h1>
+
+    <% if (items.length === 0) { %>
+    <div class="empty-state">
+      <i class="fas fa-shopping-cart"></i>
+      <h3>Корзина пуста</h3>
+      <p>Добавьте товары из каталога</p>
+      <a href="/" class="btn btn-primary">Перейти в каталог</a>
+    </div>
+    <% } else { %>
+    <div class="cart-layout">
+
+      <!-- Список товаров -->
+      <div>
+        <div id="cart-list">
+          <% items.forEach(item => { %>
+            <div class="cart-item" id="cart-item-<%= item.productId %>">
+              <div class="cart-item-img">
+                <a href="/product/<%= item.productId %>">
+                  <img src="<%= item.image_url || '/images/placeholder.jpg' %>" alt="<%= item.name %>"
+                       onerror="this.onerror=null;this.src='/images/placeholder.jpg'">
+                </a>
+              </div>
+              <div class="cart-item-info">
+                <a href="/product/<%= item.productId %>" class="cart-item-name"><%= item.name %></a>
+                <% if (item.brand) { %><div class="cart-item-brand"><%= item.brand %></div><% } %>
+                <div class="cart-item-price" id="price-<%= item.productId %>">
+                  <%= (Number(item.price) * item.quantity).toLocaleString('ru-RU') %> ₽
+                </div>
+                <div class="qty-control">
+                  <button class="qty-btn" onclick="changeQty(<%= item.productId %>, -1)">−</button>
+                  <span class="qty-value" id="qty-<%= item.productId %>"><%= item.quantity %></span>
+                  <button class="qty-btn" onclick="changeQty(<%= item.productId %>, 1)">+</button>
+                  <button class="cart-remove" onclick="removeItem(<%= item.productId %>)" title="Удалить">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <% }) %>
+        </div>
+      </div>
+
+      <!-- Сводка -->
+      <div>
+        <div class="cart-summary">
+          <h3>Итого</h3>
+          <div id="summary-rows">
+            <% let total = 0; items.forEach(item => { total += Number(item.price) * item.quantity; }) %>
+          </div>
+          <div class="summary-row">
+            <span>Товары (<span id="total-qty"><%= items.reduce((s,i)=>s+i.quantity,0) %></span>)</span>
+            <span id="subtotal"><%= total.toLocaleString('ru-RU') %> ₽</span>
+          </div>
+          <div class="summary-row">
+            <span>Доставка</span>
+            <span style="color:var(--primary);font-weight:600;">Бесплатно</span>
+          </div>
+          <div class="summary-row total">
+            <span>Итого</span>
+            <span id="grand-total"><%= total.toLocaleString('ru-RU') %> ₽</span>
+          </div>
+          <a href="/checkout" class="btn btn-primary btn-block btn-lg" style="margin-top:16px;text-align:center;display:flex;">
+            <i class="fas fa-credit-card"></i> Оформить заказ
+          </a>
+          <a href="/" class="btn btn-secondary btn-block" style="margin-top:10px;text-align:center;display:flex;">
+            Продолжить покупки
+          </a>
+        </div>
+      </div>
+
+    </div>
+    <% } %>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
+
+<script>
+const prices = {};
+<% items.forEach(item => { %>
+prices[<%= item.productId %>] = <%= item.price %>;
+<% }) %>
+
+async function changeQty(productId, delta) {
+  const res = await fetch('/api/cart/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ productId, quantity: delta })
+  });
+  if (!res.ok) return;
+
+  const qtyEl = document.getElementById('qty-' + productId);
+  let newQty = parseInt(qtyEl.textContent) + delta;
+
+  if (newQty <= 0) {
+    document.getElementById('cart-item-' + productId)?.remove();
+    newQty = 0;
+  } else {
+    qtyEl.textContent = newQty;
+    const priceEl = document.getElementById('price-' + productId);
+    if (priceEl) priceEl.textContent = (prices[productId] * newQty).toLocaleString('ru-RU') + ' ₽';
+  }
+  recalcTotal();
+  updateCartCount();
+}
+
+async function removeItem(productId) {
+  const res = await fetch('/api/cart/remove', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ productId })
+  });
+  if (res.ok) {
+    showToast('Товар удалён из корзины', 'info');
+    document.getElementById('cart-item-' + productId)?.remove();
+    recalcTotal();
+    updateCartCount();
+  }
+}
+
+function recalcTotal() {
+  const items = document.querySelectorAll('.cart-item');
+  if (!items.length) {
+    const layout = document.querySelector('.cart-layout');
+    if (layout) layout.outerHTML = `<div class="empty-state">
+      <i class="fas fa-shopping-cart"></i>
+      <h3>Корзина пуста</h3>
+      <p>Добавьте товары из каталога</p>
+      <a href="/" class="btn btn-primary">В каталог</a>
+    </div>`;
+    return;
+  }
+  let total = 0, qty = 0;
+  items.forEach(item => {
+    const id = item.id.replace('cart-item-', '');
+    const q = parseInt(document.getElementById('qty-' + id)?.textContent || 0);
+    total += (prices[id] || 0) * q;
+    qty += q;
+  });
+  document.getElementById('subtotal').textContent = total.toLocaleString('ru-RU') + ' ₽';
+  document.getElementById('grand-total').textContent = total.toLocaleString('ru-RU') + ' ₽';
+  document.getElementById('total-qty').textContent = qty;
+}
+</script>

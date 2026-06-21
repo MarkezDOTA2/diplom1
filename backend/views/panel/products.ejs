@@ -1,0 +1,383 @@
+<%- include('layout-start', { title: 'Товары', page, topbarExtra: '<button class="panel-btn panel-btn-primary" onclick="openModal(\'modal-add\')"><i class="fas fa-plus"></i> Добавить товар</button>' }) %>
+
+<div class="panel-card">
+  <div class="panel-card-header">
+    <span class="panel-card-title"><i class="fas fa-box"></i> Все товары (<%= products.length %>)</span>
+    <input type="text" id="product-search" placeholder="Поиск по названию..."
+      style="border:1.5px solid #e5e7ef;border-radius:7px;padding:6px 12px;font-size:13px;width:240px;"
+      oninput="filterProducts(this.value)">
+  </div>
+  <% if (!products.length) { %>
+  <div style="text-align:center;padding:40px;color:#7b8099;">Товаров пока нет</div>
+  <% } else { %>
+  <div style="overflow-x:auto;">
+  <table class="panel-table" id="products-table">
+    <thead><tr>
+      <th>Фото</th>
+      <th data-col="1" data-type="text">Название</th>
+      <th data-col="2" data-type="text">Бренд</th>
+      <th data-col="3" data-type="text">Категория</th>
+      <th data-col="4" data-type="number">Цена</th>
+      <th>Акция</th>
+      <th></th>
+    </tr></thead>
+    <tbody>
+    <% products.forEach(function(p) { %>
+    <tr data-name="<%= p.name.toLowerCase() %>">
+      <td>
+        <img src="<%= p.image_url || '/images/placeholder.jpg' %>" alt=""
+          style="width:48px;height:48px;object-fit:contain;border-radius:8px;background:#f8f9fd;padding:4px;"
+          onerror="this.src='/images/placeholder.jpg'">
+      </td>
+      <td style="font-weight:600;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><%= p.name %></td>
+      <td style="font-size:13px;color:#7b8099;"><%= p.brand || '—' %></td>
+      <td><span style="font-size:12px;background:#f0f2f8;padding:3px 8px;border-radius:5px;"><%= p.category %></span></td>
+      <td data-val="<%= p.price %>">
+        <strong><%= Number(p.price).toLocaleString('ru-RU') %> ₽</strong>
+        <% if (p.old_price) { %><div style="font-size:11px;color:#ef4444;text-decoration:line-through;"><%= Number(p.old_price).toLocaleString('ru-RU') %> ₽</div><% } %>
+      </td>
+      <td><% if (p.is_featured) { %><span style="color:#2bb5a0;"><i class="fas fa-star"></i></span><% } else { %><span style="color:#e5e7ef;">—</span><% } %></td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="panel-btn panel-btn-secondary panel-btn-sm" data-product="<%- JSON.stringify(p).replace(/"/g,'&quot;') %>" onclick="editProduct(JSON.parse(this.dataset.product))"><i class="fas fa-pen"></i></button>
+          <button class="panel-btn panel-btn-danger panel-btn-sm" data-del-id="<%= p.id %>" data-del-name="<%- p.name.replace(/"/g,'&quot;') %>"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+  <% } %>
+</div>
+
+<!-- Модальное окно: добавить / редактировать -->
+<div id="modal-add" class="panel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:640px;width:95%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 id="modal-product-title" style="font-size:17px;font-weight:700;">Добавить товар</h3>
+      <button onclick="closeModal('modal-add');resetForm()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7b8099;">×</button>
+    </div>
+    <form id="product-form" onsubmit="saveProduct(event)" novalidate>
+      <input type="hidden" id="pf-id">
+      <div class="panel-form-grid" style="margin-bottom:14px;">
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Название *</label>
+          <input id="pf-name" placeholder="Название товара" maxlength="150" oninput="updateCounter('pf-name',150)">
+          <div class="char-counter"><span id="pf-name-cnt">0</span>/150</div>
+        </div>
+        <div class="panel-form-group">
+          <label>Бренд *</label>
+          <input id="pf-brand" placeholder="Apple, Samsung..." maxlength="80" oninput="updateCounter('pf-brand',80)">
+          <div class="char-counter"><span id="pf-brand-cnt">0</span>/80</div>
+        </div>
+        <div class="panel-form-group">
+          <label>Категория *</label>
+          <select id="pf-category">
+            <% categories.forEach(function(c){ %><option value="<%= c.name %>"><%= c.name %></option><% }) %>
+          </select>
+        </div>
+        <div class="panel-form-group"><label>Цена (₽) *</label><input id="pf-price" type="number" min="0" max="99999999" step="1" placeholder="9990"></div>
+        <div class="panel-form-group"><label>Старая цена (₽)</label><input id="pf-old-price" type="number" min="0" max="99999999" step="1" placeholder="12990"></div>
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Описание *</label>
+          <textarea id="pf-desc" placeholder="Описание товара..." maxlength="2000" oninput="updateCounter('pf-desc',2000)"></textarea>
+          <div class="char-counter"><span id="pf-desc-cnt">0</span>/2000</div>
+        </div>
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Характеристики * (одна на строку: Ключ: Значение)</label>
+          <textarea id="pf-specs" placeholder="Процессор: Apple A17 Pro&#10;Память: 256 ГБ" style="min-height:80px;" maxlength="2000" oninput="updateCounter('pf-specs',2000)"></textarea>
+          <div class="char-counter"><span id="pf-specs-cnt">0</span>/2000</div>
+        </div>
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Изображение *</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button type="button" id="img-tab-url"  onclick="switchImgTab('url')"  style="padding:5px 14px;border-radius:6px;border:1.5px solid #2bb5a0;background:#2bb5a0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Ссылка</button>
+            <button type="button" id="img-tab-file" onclick="switchImgTab('file')" style="padding:5px 14px;border-radius:6px;border:1.5px solid #e5e7ef;background:#f0f2f8;color:#4a4f6a;font-size:12px;font-weight:600;cursor:pointer;">Загрузить файл</button>
+          </div>
+          <div id="img-url-block">
+            <input id="pf-image" placeholder="https://... или /images/..." oninput="updateImgPreview(this.value)">
+          </div>
+          <div id="img-file-block" style="display:none;">
+            <input type="file" id="pf-image-file" accept="image/*" onchange="previewFile(this)" style="border:1.5px solid #e5e7ef;border-radius:7px;padding:7px 10px;font-size:13px;width:100%;background:#fff;">
+          </div>
+          <div id="img-preview-wrap" style="margin-top:10px;display:none;">
+            <img id="img-preview" src="" alt="Превью" style="max-height:120px;max-width:100%;border-radius:8px;border:1.5px solid #e5e7ef;object-fit:contain;background:#f8f9fd;padding:6px;">
+          </div>
+        </div>
+        <div class="panel-form-group" style="grid-column:1/-1;">
+          <label>Дополнительные фотографии</label>
+          <div id="extra-images-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button type="button" id="ext-tab-url" onclick="switchExtTab('url')" style="padding:5px 14px;border-radius:6px;border:1.5px solid #2bb5a0;background:#2bb5a0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Ссылка</button>
+            <button type="button" id="ext-tab-file" onclick="switchExtTab('file')" style="padding:5px 14px;border-radius:6px;border:1.5px solid #e5e7ef;background:#f0f2f8;color:#4a4f6a;font-size:12px;font-weight:600;cursor:pointer;">Загрузить файл</button>
+          </div>
+          <div id="ext-url-block" style="display:flex;gap:8px;">
+            <input id="ext-url-input" placeholder="https://..." style="flex:1;border:1.5px solid #e5e7ef;border-radius:7px;padding:7px 12px;font-size:13px;">
+            <button type="button" onclick="addExtraUrl()" style="padding:7px 16px;background:#2bb5a0;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">+ Добавить</button>
+          </div>
+          <div id="ext-file-block" style="display:none;">
+            <input type="file" id="extra-file-input" accept="image/*" multiple style="width:100%;border:1.5px solid #e5e7ef;border-radius:7px;padding:7px 10px;font-size:13px;background:#fff;" onchange="addExtraFiles(this)">
+          </div>
+        </div>
+        <div class="panel-form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="pf-featured" style="width:auto;accent-color:#2bb5a0;"> Показывать в «Рекомендуем» (главная)
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="panel-btn panel-btn-secondary" onclick="closeModal('modal-add');resetForm()">Отмена</button>
+        <button type="submit" class="panel-btn panel-btn-primary"><i class="fas fa-save"></i> Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Модальное окно: подтверждение удаления -->
+<div id="modal-delete" class="panel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px 28px;max-width:400px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.18);">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+      <div style="width:44px;height:44px;background:#fef2f2;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="fas fa-trash" style="color:#ef4444;font-size:18px;"></i>
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#1a1d2e;margin-bottom:2px;">Удалить товар?</div>
+        <div style="font-size:13px;color:#7b8099;">Это действие нельзя отменить</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+      <button type="button" class="panel-btn panel-btn-secondary" onclick="closeModal('modal-delete')">Отмена</button>
+      <button type="button" id="del-confirm-btn" class="panel-btn panel-btn-danger" onclick="confirmDelete()">
+        <i class="fas fa-trash"></i> Удалить
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-del-id]');
+  if (btn) deleteProduct(btn.dataset.delId, btn.dataset.delName);
+});
+
+function updateCounter(id, max) {
+  var el = document.getElementById(id);
+  var cnt = document.getElementById(id + '-cnt');
+  if (!el || !cnt) return;
+  var len = el.value.length;
+  cnt.textContent = len;
+  cnt.style.color = len >= max ? '#ef4444' : len >= max * 0.85 ? '#f59e0b' : '#7b8099';
+}
+
+function syncCounters() {
+  updateCounter('pf-name', 150);
+  updateCounter('pf-brand', 80);
+  updateCounter('pf-desc', 2000);
+  updateCounter('pf-specs', 2000);
+}
+
+function filterProducts(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#products-table tbody tr').forEach(function(tr) {
+    tr.style.display = tr.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+
+function switchImgTab(tab) {
+  var isUrl = tab === 'url';
+  document.getElementById('img-url-block').style.display  = isUrl ? '' : 'none';
+  document.getElementById('img-file-block').style.display = isUrl ? 'none' : '';
+  document.getElementById('img-tab-url').style.cssText  = isUrl
+    ? 'padding:5px 14px;border-radius:6px;border:1.5px solid #2bb5a0;background:#2bb5a0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;'
+    : 'padding:5px 14px;border-radius:6px;border:1.5px solid #e5e7ef;background:#f0f2f8;color:#4a4f6a;font-size:12px;font-weight:600;cursor:pointer;';
+  document.getElementById('img-tab-file').style.cssText = isUrl
+    ? 'padding:5px 14px;border-radius:6px;border:1.5px solid #e5e7ef;background:#f0f2f8;color:#4a4f6a;font-size:12px;font-weight:600;cursor:pointer;'
+    : 'padding:5px 14px;border-radius:6px;border:1.5px solid #2bb5a0;background:#2bb5a0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;';
+  if (isUrl) { document.getElementById('pf-image-file').value = ''; }
+  updateImgPreview(isUrl ? document.getElementById('pf-image').value : '');
+}
+
+function updateImgPreview(src) {
+  var wrap = document.getElementById('img-preview-wrap');
+  var img  = document.getElementById('img-preview');
+  if (src) { img.src = src; wrap.style.display = ''; }
+  else { wrap.style.display = 'none'; }
+}
+
+function previewFile(input) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) { updateImgPreview(e.target.result); };
+  reader.readAsDataURL(input.files[0]);
+}
+
+var extraImages = []; // массив URL дополнительных фото
+
+function renderExtraImages() {
+  var list = document.getElementById('extra-images-list');
+  list.innerHTML = '';
+  extraImages.forEach(function(url, i) {
+    var wrap = document.createElement('div');
+    wrap.style = 'position:relative;display:inline-block;';
+    wrap.innerHTML = '<img src="'+url+'" style="width:72px;height:72px;object-fit:contain;border-radius:8px;border:1.5px solid #e5e7ef;background:#f8f9fd;padding:4px;">'
+      + '<button type="button" onclick="removeExtraImg('+i+')" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>';
+    list.appendChild(wrap);
+  });
+}
+
+function removeExtraImg(i) {
+  extraImages.splice(i, 1);
+  renderExtraImages();
+}
+
+function switchExtTab(tab) {
+  var isUrl = tab === 'url';
+  document.getElementById('ext-url-block').style.display = isUrl ? 'flex' : 'none';
+  document.getElementById('ext-file-block').style.display = isUrl ? 'none' : 'block';
+  document.getElementById('ext-tab-url').style.background  = isUrl ? '#2bb5a0' : '#f0f2f8';
+  document.getElementById('ext-tab-url').style.color       = isUrl ? '#fff' : '#4a4f6a';
+  document.getElementById('ext-tab-url').style.borderColor = isUrl ? '#2bb5a0' : '#e5e7ef';
+  document.getElementById('ext-tab-file').style.background  = isUrl ? '#f0f2f8' : '#2bb5a0';
+  document.getElementById('ext-tab-file').style.color       = isUrl ? '#4a4f6a' : '#fff';
+  document.getElementById('ext-tab-file').style.borderColor = isUrl ? '#e5e7ef' : '#2bb5a0';
+}
+
+function addExtraUrl() {
+  var input = document.getElementById('ext-url-input');
+  var url = input.value.trim();
+  if (!url) return;
+  extraImages.push(url);
+  input.value = '';
+  renderExtraImages();
+}
+
+async function addExtraFiles(input) {
+  if (!input.files || !input.files.length) return;
+  for (var i = 0; i < input.files.length; i++) {
+    var fd = new FormData();
+    fd.append('image', input.files[i]);
+    var r = await fetch('/api/upload', { method:'POST', credentials:'include', body: fd });
+    var d = await r.json();
+    if (d.success) extraImages.push(d.imageUrl);
+  }
+  input.value = '';
+  renderExtraImages();
+}
+
+function resetForm() {
+  document.getElementById('pf-id').value = '';
+  document.getElementById('modal-product-title').textContent = 'Добавить товар';
+  document.getElementById('product-form').reset();
+  extraImages = [];
+  renderExtraImages();
+  switchImgTab('url');
+  switchExtTab('url');
+  updateImgPreview('');
+  syncCounters();
+}
+
+function editProduct(p) {
+  document.getElementById('pf-id').value = p.id;
+  document.getElementById('modal-product-title').textContent = 'Редактировать товар';
+  document.getElementById('pf-name').value = p.name || '';
+  document.getElementById('pf-brand').value = p.brand || '';
+  document.getElementById('pf-category').value = p.category || '';
+  document.getElementById('pf-price').value = p.price ? parseInt(p.price) : '';
+  document.getElementById('pf-old-price').value = p.old_price ? parseInt(p.old_price) : '';
+  document.getElementById('pf-image').value = p.image_url || '';
+  document.getElementById('pf-desc').value = p.description || '';
+  document.getElementById('pf-specs').value = p.specs || '';
+  document.getElementById('pf-featured').checked = !!p.is_featured;
+  extraImages = Array.isArray(p.extra_images) ? p.extra_images.slice() : [];
+  renderExtraImages();
+  switchImgTab('url');
+  switchExtTab('url');
+  updateImgPreview(p.image_url || '');
+  syncCounters();
+  openModal('modal-add');
+}
+
+async function saveProduct(e) {
+  e.preventDefault();
+  var id = document.getElementById('pf-id').value;
+
+  var name     = document.getElementById('pf-name').value.trim();
+  var brand    = document.getElementById('pf-brand').value.trim();
+  var price    = document.getElementById('pf-price').value.trim();
+  var category = document.getElementById('pf-category').value;
+  var desc     = document.getElementById('pf-desc').value.trim();
+  var specs    = document.getElementById('pf-specs').value.trim();
+  var imgUrlVal = document.getElementById('pf-image').value.trim();
+  var fileInput = document.getElementById('pf-image-file');
+  var hasFile = fileInput.files && fileInput.files[0];
+
+  if (!name)     { showToast('Введите название товара', 'warning');  document.getElementById('pf-name').focus();     return; }
+  if (!brand)    { showToast('Введите бренд товара', 'warning');     document.getElementById('pf-brand').focus();    return; }
+  if (!category) { showToast('Выберите категорию', 'warning');       document.getElementById('pf-category').focus(); return; }
+  if (!price)    { showToast('Введите цену товара', 'warning');      document.getElementById('pf-price').focus();    return; }
+  if (!desc)     { showToast('Введите описание товара', 'warning');  document.getElementById('pf-desc').focus();     return; }
+  if (!specs)    { showToast('Заполните характеристики', 'warning'); document.getElementById('pf-specs').focus();    return; }
+  if (!imgUrlVal && !hasFile) { showToast('Добавьте изображение товара', 'warning'); return; }
+
+  // Загрузка файла если выбран
+  var imageUrl = imgUrlVal;
+  if (hasFile) {
+    var fd = new FormData();
+    fd.append('image', fileInput.files[0]);
+    var upRes = await fetch('/api/upload', { method: 'POST', credentials: 'include', body: fd });
+    var upData = await upRes.json();
+    if (!upRes.ok || !upData.success) { showToast('Ошибка загрузки фото', 'error'); return; }
+    imageUrl = upData.imageUrl;
+  }
+
+  var body = {
+    name: name,
+    brand: brand,
+    category: category,
+    price: price,
+    old_price: document.getElementById('pf-old-price').value,
+    image_url: imageUrl,
+    description: desc,
+    specs: specs,
+    is_featured: document.getElementById('pf-featured').checked,
+    images: extraImages,
+  };
+  var url = id ? '/api/panel/products/'+id : '/api/panel/products';
+  var method = id ? 'PUT' : 'POST';
+  var res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+  var data = await res.json();
+  if (res.ok && data.success) {
+    showToast(id ? 'Товар обновлён' : 'Товар добавлен', 'success');
+    setTimeout(function(){ location.reload(); }, 800);
+  } else {
+    showToast(data.message || 'Ошибка', 'error');
+  }
+}
+
+var _delProductId = null;
+
+function deleteProduct(id, name) {
+  _delProductId = id;
+  openModal('modal-delete');
+}
+
+async function confirmDelete() {
+  if (!_delProductId) return;
+  var btn = document.getElementById('del-confirm-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Удаление...';
+  var res = await fetch('/api/panel/products/' + _delProductId, { method:'DELETE', credentials:'include' });
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-trash"></i> Удалить';
+  closeModal('modal-delete');
+  if (res.ok) {
+    showToast('Товар удалён', 'success');
+    setTimeout(function(){ location.reload(); }, 700);
+  } else showToast('Ошибка удаления', 'error');
+}
+
+initSortable('products-table');
+</script>
+
+<%- include('layout-end') %>

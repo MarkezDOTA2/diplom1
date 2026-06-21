@@ -1,0 +1,137 @@
+<%- include('../partials/header', { title: 'Избранное' }) %>
+
+<main>
+  <div class="container" style="padding:28px 20px;">
+    <h1 style="font-size:24px;font-weight:700;margin-bottom:20px;text-align:center;">❤️ Избранное</h1>
+    <div id="fav-search-wrap" style="display:none;max-width:480px;margin:0 auto 24px;position:relative;">
+      <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;pointer-events:none;"></i>
+      <input id="fav-search" type="text" placeholder="Поиск по избранному..."
+        oninput="filterFavorites(this.value)"
+        style="width:100%;padding:11px 16px 11px 40px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:#fff;box-sizing:border-box;outline:none;transition:border-color .2s;">
+      <span id="fav-count" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted);"></span>
+    </div>
+    <div id="fav-no-results" style="display:none;text-align:center;padding:40px;color:var(--text-muted);">
+      <i class="fas fa-search" style="font-size:40px;color:var(--border);display:block;margin-bottom:12px;"></i>
+      <p>По запросу ничего не найдено</p>
+    </div>
+    <div id="fav-container">
+      <div style="text-align:center;padding:40px;color:var(--text-muted);">
+        <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
+        <p style="margin-top:12px;">Загрузка...</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
+
+<script>
+async function loadFavorites() {
+  const container = document.getElementById('fav-container');
+  try {
+    const res = await fetch('/api/favorites', { credentials: 'include' });
+    if (!res.ok) { window.location.href = '/login'; return; }
+    const { data: ids } = await res.json();
+
+    if (!ids.length) {
+      container.innerHTML = `<div class="empty-state">
+        <i class="far fa-heart" style="font-size:60px;color:var(--border);"></i>
+        <h3>Избранное пусто</h3>
+        <p>Добавляйте понравившиеся товары в избранное</p>
+        <a href="/" class="btn btn-primary">В каталог</a>
+      </div>`;
+      return;
+    }
+
+    const res2 = await fetch(`/api/products?ids=${ids.join(',')}`, { credentials: 'include' });
+    const { data: products } = await res2.json();
+
+    container.innerHTML = `<div class="products-grid" id="fav-grid">${products.map(p => `
+      <div class="product-card" data-name="${(p.name || '').toLowerCase()}" data-brand="${(p.brand || '').toLowerCase()}">
+        <div class="product-card-img">
+          <a href="/product/${p.id}">
+            <img src="${p.image_url || '/images/placeholder.jpg'}" alt="${p.name}" onerror="this.onerror=null;this.src='/images/placeholder.jpg'">
+          </a>
+          <button class="product-card-fav active" data-id="${p.id}" onclick="removeFav(${p.id}, this)" title="Убрать из избранного">
+            <i class="fas fa-heart"></i>
+          </button>
+        </div>
+        <div class="product-card-body">
+          ${p.brand ? `<div class="product-card-brand">${p.brand}</div>` : ''}
+          <a href="/product/${p.id}" class="product-card-name">${p.name}</a>
+          <div class="product-card-price">${Number(p.price).toLocaleString('ru-RU')} ₽
+            ${p.old_price ? `<span class="product-card-old-price">${Number(p.old_price).toLocaleString('ru-RU')} ₽</span>` : ''}
+          </div>
+          <button class="btn-cart" onclick="addToCart(${p.id}, this)">
+            <i class="fas fa-shopping-cart"></i> В корзину
+          </button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+    document.getElementById('fav-search-wrap').style.display = 'block';
+    updateFavCount();
+  } catch (e) {
+    container.innerHTML = '<p style="color:red;">Ошибка загрузки</p>';
+  }
+}
+
+function updateFavCount() {
+  var cards = document.querySelectorAll('#fav-grid .product-card');
+  var visible = Array.from(cards).filter(function(c){ return c.style.display !== 'none'; }).length;
+  var total = cards.length;
+  var cnt = document.getElementById('fav-count');
+  if (cnt) cnt.textContent = visible < total ? visible + ' из ' + total : total + ' товаров';
+}
+
+function filterFavorites(q) {
+  q = q.trim().toLowerCase();
+  var cards = document.querySelectorAll('#fav-grid .product-card');
+  var anyVisible = false;
+  cards.forEach(function(card) {
+    var match = !q || card.dataset.name.includes(q) || card.dataset.brand.includes(q);
+    card.style.display = match ? '' : 'none';
+    if (match) anyVisible = true;
+  });
+  var noRes = document.getElementById('fav-no-results');
+  var grid = document.getElementById('fav-grid');
+  if (noRes) noRes.style.display = (!anyVisible && q) ? 'block' : 'none';
+  if (grid) grid.style.display = anyVisible ? '' : 'none';
+  updateFavCount();
+}
+
+async function removeFav(productId, btn) {
+  const res = await fetch('/favorites/remove', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ productId })
+  });
+  if (!res.ok) { showToast('Ошибка при удалении', 'error'); return; }
+  if (res.ok) {
+    showToast('Удалено из избранного', 'info');
+    btn.closest('.product-card').remove();
+    var remaining = document.querySelectorAll('#fav-grid .product-card').length;
+    if (!remaining) {
+      document.getElementById('fav-search-wrap').style.display = 'none';
+      loadFavorites();
+    } else {
+      updateFavCount();
+    }
+  }
+}
+
+async function addToCart(productId, btn) {
+  const res = await fetch('/api/cart/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ productId, quantity: 1 })
+  });
+  if (res.status === 401) { showToast('Войдите в аккаунт, чтобы добавить товар в корзину. <a href="/login">Войти</a>', 'warning', 5000); return; }
+  if (res.ok) {
+    btn.classList.add('added');
+    btn.innerHTML = '<i class="fas fa-check"></i> Добавлено';
+    showToast('Товар добавлен в корзину', 'success');
+    updateCartCount();
+    setTimeout(() => { btn.classList.remove('added'); btn.innerHTML = '<i class="fas fa-shopping-cart"></i> В корзину'; }, 2000);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadFavorites);
+</script>

@@ -1,0 +1,124 @@
+<%- include('layout-start', { title: 'Пользователи', page, topbarExtra: '' }) %>
+
+<% var roleLabels = { user: 'Пользователь', admin: 'Администратор', super_admin: 'Главный администратор' }; %>
+
+<div class="panel-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+  <div class="panel-stat-card">
+    <div class="panel-stat-icon" style="background:#f0f2f8;color:#4a4f6a;"><i class="fas fa-users"></i></div>
+    <div><div class="panel-stat-value"><%= users.length %></div><div class="panel-stat-label">Всего</div></div>
+  </div>
+  <div class="panel-stat-card">
+    <div class="panel-stat-icon" style="background:#e0f5f2;color:#1a9987;"><i class="fas fa-user-shield"></i></div>
+    <div><div class="panel-stat-value"><%= users.filter(function(u){return u.role==='admin'||u.role==='super_admin';}).length %></div><div class="panel-stat-label">Администраторы</div></div>
+  </div>
+  <div class="panel-stat-card">
+    <div class="panel-stat-icon" style="background:#fef3c7;color:#b45309;"><i class="fas fa-crown"></i></div>
+    <div><div class="panel-stat-value"><%= users.filter(function(u){return u.role==='super_admin';}).length %></div><div class="panel-stat-label">Гл. администраторов</div></div>
+  </div>
+</div>
+
+<div class="panel-card">
+  <div class="panel-card-header">
+    <span class="panel-card-title"><i class="fas fa-users"></i> Список пользователей</span>
+    <input type="text" placeholder="Поиск..." oninput="filterUsers(this.value)"
+      style="border:1.5px solid #e5e7ef;border-radius:7px;padding:6px 12px;font-size:13px;width:220px;">
+  </div>
+  <div style="overflow-x:auto;">
+  <table class="panel-table" id="users-table">
+    <thead><tr>
+      <th data-col="0" data-type="number">ID</th>
+      <th data-col="1" data-type="text">Имя</th>
+      <th data-col="2" data-type="text">Email</th>
+      <th>Телефон</th>
+      <th data-col="4" data-type="text">Роль</th>
+      <th data-col="5" data-type="date">Дата регистрации</th>
+      <th>Изменить роль</th>
+    </tr></thead>
+    <tbody>
+    <% users.forEach(function(u) { %>
+    <tr data-name="<%= (u.username+''+u.email).toLowerCase() %>">
+      <td style="color:#7b8099;">#<%= u.id %></td>
+      <td><strong style="font-size:14px;"><%= u.username %></strong></td>
+      <td style="font-size:13px;color:#7b8099;"><%= u.email || '—' %></td>
+      <td style="font-size:13px;"><%= u.phone || '—' %></td>
+      <td>
+        <span class="panel-badge panel-badge-<%= u.role %>">
+          <% if (u.role==='super_admin') { %><i class="fas fa-crown"></i> <% } %>
+          <%= roleLabels[u.role] || u.role %>
+        </span>
+      </td>
+      <td style="font-size:12px;color:#7b8099;">
+        <%= u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '—' %>
+      </td>
+      <td>
+        <% if (u.id !== user.id) { %>
+        <div style="position:relative;display:inline-block;">
+          <select class="role-select" onchange="applyRoleColor(this);changeRole(<%= u.id %>, this)">
+            <option value="user"        <%= u.role==='user'        ? 'selected':'' %>>Пользователь</option>
+            <option value="admin"       <%= u.role==='admin'       ? 'selected':'' %>>Администратор</option>
+            <option value="super_admin" <%= u.role==='super_admin' ? 'selected':'' %>>Гл. администратор</option>
+          </select>
+          <i class="fas fa-chevron-down" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;pointer-events:none;"></i>
+        </div>
+        <% } else { %>
+        <span style="font-size:12px;color:#7b8099;">Это вы</span>
+        <% } %>
+      </td>
+    </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<script>
+var ROLE_STYLES = {
+  user:        { bg:'#f0f2f8', color:'#4a4f6a', border:'#e5e7ef' },
+  admin:       { bg:'#e0f5f2', color:'#1a9987', border:'#a7e9e1' },
+  super_admin: { bg:'#fef9ec', color:'#92400e', border:'#fcd34d' },
+};
+
+function applyRoleColor(sel) {
+  var s = ROLE_STYLES[sel.value] || ROLE_STYLES.user;
+  sel.style.background  = s.bg;
+  sel.style.color       = s.color;
+  sel.style.borderColor = s.border;
+  var icon = sel.parentElement.querySelector('i');
+  if (icon) icon.style.color = s.color;
+}
+
+document.querySelectorAll('.role-select').forEach(function(sel) {
+  applyRoleColor(sel);
+});
+
+initSortable('users-table');
+
+function filterUsers(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#users-table tbody tr').forEach(function(tr) {
+    tr.style.display = tr.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+
+async function changeRole(userId, sel) {
+  var role = sel.value;
+  var prevRole = sel.dataset.prevRole || role;
+  sel.dataset.prevRole = role;
+  var res = await fetch('/api/panel/users/'+userId+'/role', {
+    method: 'PUT', headers: {'Content-Type':'application/json'}, credentials: 'include',
+    body: JSON.stringify({ role })
+  });
+  var data = await res.json();
+  if (res.ok && data.success) {
+    sel.dataset.prevRole = role;
+    showToast('Роль обновлена', 'success');
+    setTimeout(function(){ location.reload(); }, 800);
+  } else {
+    sel.value = prevRole;
+    applyRoleColor(sel);
+    showToast(data.message || 'Ошибка', 'error');
+  }
+}
+</script>
+
+<%- include('layout-end') %>

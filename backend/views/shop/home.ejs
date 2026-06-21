@@ -1,0 +1,277 @@
+<%- include('../partials/header', { title: 'Интернет-магазин электроники', currentPage: 'home' }) %>
+
+<!-- PROMO CAROUSEL -->
+<% if (promoSlides && promoSlides.length) { %>
+<section class="promo-carousel" id="promoCarousel"
+  onmouseenter="carouselPause()" onmouseleave="carouselResume()">
+
+  <div class="carousel-track-wrap">
+    <div class="carousel-track" id="carouselTrack">
+
+      <% promoSlides.forEach(function(s) { %>
+      <div class="carousel-slide" style="background:<%= s.gradient %>;">
+        <div class="c-deco c-deco-1"></div>
+        <div class="c-deco c-deco-2"></div>
+        <div class="c-deco c-deco-3"></div>
+        <div class="container">
+          <div class="carousel-slide-inner">
+            <div class="carousel-text">
+              <% if (s.badge) { %><div class="carousel-badge"><%= s.badge %></div><% } %>
+              <div class="carousel-title"><%= s.title %></div>
+              <% if (s.description) { %><div class="carousel-desc"><%= s.description %></div><% } %>
+              <div class="carousel-actions">
+                <% if (s.btn1_text) { %><a href="<%= s.btn1_link || '/' %>" class="carousel-btn-primary"><%= s.btn1_text %></a><% } %>
+                <% if (s.btn2_text) { %><a href="<%= s.btn2_link || '/' %>" class="carousel-btn-outline"><%= s.btn2_text %></a><% } %>
+              </div>
+            </div>
+            <div class="carousel-visual">
+              <% if (s.image_url) { %>
+                <img src="<%= s.image_url %>" alt="" style="max-height:200px;max-width:280px;object-fit:contain;border-radius:16px;display:block;" onerror="this.style.display='none'">
+              <% } else { %>
+                <%= s.visual || '🛍️' %>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+
+    </div><!-- /carousel-track -->
+  </div><!-- /carousel-track-wrap -->
+
+  <!-- Стрелки -->
+  <button class="carousel-arrow carousel-prev" onclick="carouselPrev()" aria-label="Назад">
+    <i class="fas fa-chevron-left"></i>
+  </button>
+  <button class="carousel-arrow carousel-next" onclick="carouselNext()" aria-label="Вперёд">
+    <i class="fas fa-chevron-right"></i>
+  </button>
+
+  <!-- Точки (генерируются динамически JS) -->
+  <div class="carousel-dots" id="carouselDots"></div>
+
+  <!-- Прогресс-бар -->
+  <div class="carousel-progress" id="carouselProgress"></div>
+
+</section>
+
+<script>
+(function() {
+  var current = 0;
+  var slides = document.querySelectorAll('.carousel-slide');
+  var total = slides.length || 1;
+  var timer = null;
+  var paused = false;
+  var INTERVAL = 4200;
+
+  // Генерируем точки динамически
+  var dotsContainer = document.getElementById('carouselDots');
+  for (var i = 0; i < total; i++) {
+    (function(idx) {
+      var btn = document.createElement('button');
+      btn.className = 'carousel-dot' + (idx === 0 ? ' active' : '');
+      btn.onclick = function() { carouselGo(idx); };
+      dotsContainer.appendChild(btn);
+    })(i);
+  }
+
+  function updateUI() {
+    document.getElementById('carouselTrack').style.transform = 'translateX(-' + (current * 100) + '%)';
+    document.querySelectorAll('.carousel-dot').forEach(function(d, i) {
+      d.classList.toggle('active', i === current);
+    });
+    var bar = document.getElementById('carouselProgress');
+    bar.className = 'carousel-progress';
+    bar.style.width = '0';
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        if (!paused) {
+          bar.className = 'carousel-progress running';
+        }
+      });
+    });
+  }
+
+  function carouselGo(idx) {
+    current = ((idx % total) + total) % total;
+    updateUI();
+    restartTimer();
+  }
+
+  function carouselNext() { carouselGo(current + 1); }
+  function carouselPrev() { carouselGo(current - 1); }
+
+  function restartTimer() {
+    clearInterval(timer);
+    if (!paused) {
+      timer = setInterval(function() { carouselGo(current + 1); }, INTERVAL);
+    }
+  }
+
+  function carouselPause() {
+    paused = true;
+    clearInterval(timer);
+    var bar = document.getElementById('carouselProgress');
+    bar.className = 'carousel-progress';
+  }
+
+  function carouselResume() {
+    paused = false;
+    restartTimer();
+    updateUI();
+  }
+
+  window.carouselGo    = carouselGo;
+  window.carouselNext  = carouselNext;
+  window.carouselPrev  = carouselPrev;
+  window.carouselPause  = carouselPause;
+  window.carouselResume = carouselResume;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    updateUI();
+    restartTimer();
+  });
+})();
+</script>
+<% } %>
+
+<main style="padding-bottom:40px;">
+  <div class="container">
+
+    <!-- КАТЕГОРИИ -->
+    <section style="margin-bottom:40px;<% if (!(promoSlides && promoSlides.length)) { %>margin-top:32px;<% } %>">
+      <h2 class="section-title">Категории</h2>
+      <%
+        const _catIcons = {
+          smartphones:   'fas fa-mobile-alt',
+          laptops:       'fas fa-laptop',
+          tvs:           'fas fa-tv',
+          refrigerators: 'fas fa-snowflake',
+          computers:     'fas fa-desktop',
+          headphones:    'fas fa-headphones',
+          accessories:   'fas fa-plug'
+        };
+      %>
+      <div class="categories-grid">
+        <% categories.forEach(cat => { %>
+        <a href="/category/<%= cat.slug %>" class="category-card">
+          <div class="category-card-icon"><i class="<%= _catIcons[cat.slug] || 'fas fa-tag' %>"></i></div>
+          <div class="category-card-name"><%= cat.name %></div>
+        </a>
+        <% }) %>
+      </div>
+    </section>
+
+    <!-- ТОВАРЫ НА ГЛАВНОЙ -->
+    <% if (smartphones.length > 0) { %>
+    <section class="category-block" style="margin-bottom:48px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <h2 class="section-title" style="margin-bottom:0;"><i class="fas fa-mobile-alt"></i> Смартфоны</h2>
+        <a href="/category/smartphones" class="btn btn-secondary btn-sm">Все смартфоны <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="products-grid">
+        <% smartphones.forEach(product => { %>
+        <%- include('../partials/product-card', { product }) %>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+
+    <% if (laptops.length > 0) { %>
+    <section class="category-block" style="margin-bottom:48px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <h2 class="section-title" style="margin-bottom:0;"><i class="fas fa-laptop"></i> Ноутбуки</h2>
+        <a href="/category/laptops" class="btn btn-secondary btn-sm">Все ноутбуки <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="products-grid">
+        <% laptops.forEach(product => { %>
+        <%- include('../partials/product-card', { product }) %>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+
+    <% if (tvs.length > 0) { %>
+    <section class="category-block" style="margin-bottom:48px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <h2 class="section-title" style="margin-bottom:0;"><i class="fas fa-tv"></i> Телевизоры</h2>
+        <a href="/category/tvs" class="btn btn-secondary btn-sm">Все телевизоры <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="products-grid">
+        <% tvs.forEach(product => { %>
+        <%- include('../partials/product-card', { product }) %>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+
+    <% if (featured.length > 0) { %>
+    <section class="category-block">
+      <h2 class="section-title"><i class="fas fa-star"></i> Рекомендуем</h2>
+      <div class="products-grid">
+        <% featured.slice(0, 4).forEach(product => { %>
+        <%- include('../partials/product-card', { product }) %>
+        <% }) %>
+      </div>
+    </section>
+    <% } %>
+
+    <!-- Пусто если нет товаров -->
+    <% if (!smartphones.length && !laptops.length && !tvs.length && !featured.length) { %>
+    <div class="empty-state">
+      <i class="fas fa-box-open"></i>
+      <h3>Товаров пока нет</h3>
+      <p>Добавьте товары в <a href="/panel/products" style="color:var(--primary)">панели администратора</a></p>
+    </div>
+    <% } %>
+
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
+
+<script>
+async function addToCart(productId, btn) {
+  try {
+    const res = await fetch('/api/cart/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ productId, quantity: 1 })
+    });
+    if (res.status === 401) { showToast('Войдите в аккаунт, чтобы добавить товар в корзину. <a href="/login">Войти</a>', 'warning', 5000); return; }
+    if (res.ok) {
+      btn.classList.add('added');
+      btn.innerHTML = '<i class="fas fa-check"></i> Добавлено';
+      showToast('Товар добавлен в корзину', 'success');
+      updateCartCount();
+      setTimeout(() => { btn.classList.remove('added'); btn.innerHTML = '<i class="fas fa-shopping-cart"></i> В корзину'; }, 2000);
+    }
+  } catch { showToast('Ошибка при добавлении в корзину', 'error'); }
+}
+
+async function toggleFav(productId, btn) {
+  try {
+    const isFav = btn.classList.contains('active');
+    const res = await fetch(isFav ? '/favorites/remove' : '/favorites/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ productId })
+    });
+    if (res.status === 401) { showToast('Войдите в аккаунт, чтобы добавить в избранное. <a href="/login">Войти</a>', 'warning', 5000); return; }
+    if (res.ok) {
+      btn.classList.toggle('active');
+      showToast(isFav ? 'Удалено из избранного' : 'Добавлено в избранное', isFav ? 'info' : 'success');
+    }
+  } catch {}
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch('/api/favorites', { credentials: 'include' });
+    if (res.ok) {
+      const { data } = await res.json();
+      document.querySelectorAll('.product-card-fav').forEach(btn => {
+        if (data.includes(parseInt(btn.dataset.id))) btn.classList.add('active');
+      });
+    }
+  } catch {}
+});
+</script>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — Панель управления</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/panel.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="panel-body">
+<script>
+function initSortable(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var state = { col: -1, dir: 1 };
+  table.querySelectorAll('thead th[data-col]').forEach(function(th) {
+    th.style.cursor = 'pointer';
+    th.style.userSelect = 'none';
+    th.innerHTML += '<span class="sort-arrow"> ↕</span>';
+    th.addEventListener('click', function() {
+      var col = parseInt(th.dataset.col);
+      var type = th.dataset.type || 'text';
+      if (state.col === col) { state.dir *= -1; } else { state.col = col; state.dir = 1; }
+      table.querySelectorAll('thead th .sort-arrow').forEach(function(a){ a.textContent = ' ↕'; a.style.opacity = '0.35'; });
+      th.querySelector('.sort-arrow').textContent = state.dir === 1 ? ' ↑' : ' ↓';
+      th.querySelector('.sort-arrow').style.opacity = '1';
+      var tbody = table.querySelector('tbody');
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort(function(a, b) {
+        var aCell = a.cells[col], bCell = b.cells[col];
+        if (!aCell || !bCell) return 0;
+        var aVal = (aCell.dataset.val !== undefined ? aCell.dataset.val : aCell.textContent).trim();
+        var bVal = (bCell.dataset.val !== undefined ? bCell.dataset.val : bCell.textContent).trim();
+        var result = 0;
+        if (type === 'number') {
+          result = (parseFloat(aVal.replace(/\s|₽|#/g,'')) || 0) - (parseFloat(bVal.replace(/\s|₽|#/g,'')) || 0);
+        } else if (type === 'date') {
+          result = new Date(aVal.split('.').reverse().join('-')) - new Date(bVal.split('.').reverse().join('-'));
+        } else {
+          result = aVal.localeCompare(bVal, 'ru');
+        }
+        return result * state.dir;
+      });
+      rows.forEach(function(r){ tbody.appendChild(r); });
+    });
+  });
+}
+</script>
+
+<aside class="panel-sidebar">
+  <div class="panel-logo">
+    <span>Store<span class="logo-accent">Chicco</span></span>
+    <span class="panel-logo-tag">Admin</span>
+  </div>
+
+  <nav class="panel-nav">
+    <div class="panel-nav-section">Управление</div>
+    <a href="/panel/orders"     class="panel-nav-link <%= page==='orders'     ? 'active':'' %>"><i class="fas fa-receipt"></i> Заказы</a>
+    <a href="/panel/products"   class="panel-nav-link <%= page==='products'   ? 'active':'' %>"><i class="fas fa-box"></i> Товары</a>
+    <a href="/panel/promotions" class="panel-nav-link <%= page==='promotions' ? 'active':'' %>"><i class="fas fa-tags"></i> Акции</a>
+    <% if (user.role === 'super_admin') { %>
+    <div class="panel-nav-sep"></div>
+    <div class="panel-nav-section">Супер-админ</div>
+    <a href="/panel/users" class="panel-nav-link <%= page==='users' ? 'active':'' %>"><i class="fas fa-users"></i> Пользователи</a>
+    <% } %>
+  </nav>
+
+  <div class="panel-sidebar-footer">
+    <div class="panel-user-chip">
+      <div class="panel-user-avatar"><%= user.username.charAt(0).toUpperCase() %></div>
+      <div>
+        <div class="panel-user-name"><%= user.username %></div>
+        <div class="panel-user-role"><%= user.role === 'super_admin' ? 'Главный администратор' : 'Администратор' %></div>
+      </div>
+    </div>
+    <a href="/" class="panel-nav-link" style="margin-bottom:6px;"><i class="fas fa-store"></i> На сайт</a>
+    <form action="/logout" method="POST">
+      <button type="submit" class="panel-logout-btn"><i class="fas fa-sign-out-alt"></i> Выйти</button>
+    </form>
+  </div>
+</aside>
+
+<div class="panel-main">
+  <div class="panel-topbar">
+    <h1 class="panel-page-title"><%= title %></h1>
+    <div class="panel-topbar-right">
+      <% if (typeof topbarExtra !== 'undefined') { %><%- topbarExtra %><% } %>
+    </div>
+  </div>
+  <div class="panel-content">
